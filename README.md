@@ -9,6 +9,8 @@ venv\Scripts\activate #windows
 5. pip install -r requirements.txt
 6. Create .env file :
     Add: 
-    i) BOT_TOKEN
-    ii) ANNOUNCEMENT_CHANNEL
+    i)   BOT_TOKEN
+    ii)  ANNOUNCEMENT_CHANNEL
     iii) FIREBASE_CREDENTIALS = ".firebasekey.json"
+
+7. Create .firebasekey.json file to store firebase key 

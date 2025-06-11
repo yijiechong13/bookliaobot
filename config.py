@@ -1,0 +1,9 @@
+
+#Conversation states for hosting game
+ASK_BOOKING, WAITING_BOOKING_CONFIRM, WAITING_FOR_GROUP_LINK,GET_GROUP_LINK, RECEIVED_GROUP_LINK, SPORT, TIME, VENUE, SKILL, CONFIRMATION = range(10)
+
+HOST_MENU= 20 
+
+# Conversation states for viewing/cancelling games
+VIEW_HOSTED_GAMES = 21
+CONFIRM_CANCEL =  22

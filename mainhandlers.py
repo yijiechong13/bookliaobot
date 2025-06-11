@@ -1,10 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from savegame import GameDatabase
 from utils import *
-from hosthandlers import *
-
-db = GameDatabase()
+from createagame import *
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -16,7 +13,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     await update.message.reply_text(
         "🎉 Welcome to BookLiao Bot! \nNice to meet you! This bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n " \
-        "You can: " \
+        "You can: " 
         "\n 🏟️ Host a Game - set the sport, time, venue, and we'll help you find players " \
         "\n👥 Join a Game - browse open listings that match your schedule and interests \n\n " \
         "Let's get started! Choose an option below:",
@@ -27,6 +24,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    db = context.bot_data['db']
 
     try:
 

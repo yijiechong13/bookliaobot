@@ -23,3 +23,28 @@ class GameDatabase:
     def update_game(self, game_id, update_data):
         game_ref = self.db.collection("game").document(game_id)
         game_ref.update(update_data)
+
+    def get_hosted_games(self, host_id):
+        games_ref = self.db.collection("game")
+        query = games_ref.where("host", "==", host_id).where("status", "==", "open")
+        results = query.stream()
+        return [{"id": game.id, **game.to_dict()} for game in results] 
+    
+    def cancel_game(self, game_id): 
+        
+        try:
+            game_ref = self.db.collection("game").document(game_id)
+            game_doc = game_ref.get()
+            
+            if game_doc.exists:
+                game_data = game_doc.to_dict()
+                announcement_msg_id = game_data.get("announcement_msg_id")
+                
+                # Update the game status to cancelled
+                game_ref.update({"status": "cancelled"})
+                
+                return announcement_msg_id
+            return None
+        except Exception as e:
+            print(f"Error cancelling game: {e}")
+            return None

@@ -3,13 +3,29 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from utils import *
+from config import *
 
 load_dotenv() 
 
-#Conversation states for hosting game
-ASK_BOOKING, WAITING_BOOKING_CONFIRM, WAITING_FOR_GROUP_LINK,GET_GROUP_LINK, RECEIVED_GROUP_LINK, SPORT, TIME, VENUE, SKILL, CONFIRMATION = range(10)
-
 async def host_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer() 
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Create New Game", callback_data="create_game")],
+        [InlineKeyboardButton("📋 My Game Listings", callback_data="view_hosted_games")],
+        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main")]
+    ]
+
+    context.user_data.clear() 
+    
+    await query.edit_message_text(
+        text="🏟️ Host a Game - Choose an option:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return HOST_MENU
+
+async def create_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer() 
 
@@ -25,7 +41,6 @@ async def host_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return ASK_BOOKING
-
 
 async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -88,7 +103,6 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_telegram_group_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
 
     if query.data == "group_yes":
         await get_group_link(update, context)  
@@ -203,7 +217,6 @@ async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRMATION
 
 async def post_announcement(context, game_data, user):
-    
     ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
     announcement_text = (
         f"🎮 New {game_data['sport']} Game!\n\n"
@@ -221,3 +234,5 @@ async def post_announcement(context, game_data, user):
             [InlineKeyboardButton("✋ Join Game", url=game_data["group_link"])]
         ])
     )
+
+

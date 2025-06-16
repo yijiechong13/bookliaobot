@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler
 from utils import *
 from config import *
+from telethon_service import telethon_service
 
 load_dotenv() 
 
@@ -35,6 +36,9 @@ async def create_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     ]
 
     context.user_data.clear() 
+
+    # Set auto-create group flag
+    context.user_data["auto_create_group"] = True
     
     await query.edit_message_text(
         text="Do you already have a venue booked?",
@@ -47,8 +51,29 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
 
     if query.data == "venue_yes":
-        await after_booking(update,context)
-        return WAITING_FOR_GROUP_LINK
+        
+        if "booking_msg_id" in context.user_data and "booking_chat_id" in context.user_data:
+            try:
+                await context.bot.delete_message(
+                    chat_id=context.user_data["booking_chat_id"],
+                    message_id=context.user_data["booking_msg_id"]
+                )
+            except Exception as e:
+                print(f"Couldn't delete message: {e}")
+        
+        # Clear the booking message data
+        context.user_data.pop("booking_msg_id", None)
+        context.user_data.pop("booking_chat_id", None)
+        
+        # Show sport selection
+        sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
+        keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
+
+        await query.edit_message_text(
+            "Which sport are you hosting?",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return SPORT
 
     elif query.data == "venue_no":
         print("✅ venue_no clicked")
@@ -77,7 +102,6 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
 async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
       
     if "booking_msg_id" in context.user_data and "booking_chat_id" in context.user_data:
         try:
@@ -92,51 +116,14 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("booking_msg_id", None)
     context.user_data.pop("booking_chat_id", None)
     
-    keyboard = [
-        [InlineKeyboardButton("✅ Yes", callback_data="group_yes")],
-        [InlineKeyboardButton("❌ No", callback_data="group_no")]
-    ]
-    await query.edit_message_text("Have you created a Telegram group for this game?", reply_markup=InlineKeyboardMarkup(keyboard))
-    
-    return WAITING_FOR_GROUP_LINK
+    if context.user_data.get("auto_create_group"):
+        sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
+        keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
 
-async def handle_telegram_group_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    if query.data == "group_yes":
-        await get_group_link(update, context)  
-        return RECEIVED_GROUP_LINK
-    
-    elif query.data == "group_no":
-        await query.edit_message_text(
-            "Please create a Telegram group and add @BookLiaoBot as an admin.\n"
-            "Once done, come back and tap the button below.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Done Creating Group", callback_data="group_yes")]
-            ])
-        )
-        return GET_GROUP_LINK
-
-async def get_group_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.edit_message_text("Please paste your telegram group link: e.g https://t.me/+H-Ta2vuZmDE1Mjg2 ", reply_markup=None)
-    return RECEIVED_GROUP_LINK  
-
-async def receive_group_link(update: Update, context: ContextTypes.DEFAULT_TYPE): 
-    context.user_data["group_link"] = update.message.text   
-
-    if not update.message.text.startswith(("https://t.me/+", "https://telegram.me/")):
-        await update.message.reply_text("❌ That doesn't look like a valid Telegram group link. Try again:")
-        return RECEIVED_GROUP_LINK
-
-    sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
-    keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
-
-    await update.message.reply_text(
-        "which sport are you hosting?",
-        reply_markup = InlineKeyboardMarkup(keyboard))
-    return SPORT
+        await update.message.reply_text(
+            "which sport are you hosting?",
+            reply_markup = InlineKeyboardMarkup(keyboard))
+        return SPORT
 
 async def sport_chosen (update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -146,7 +133,6 @@ async def sport_chosen (update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return TIME
 
-
 async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
     context.user_data["time"] = user_input
@@ -154,9 +140,9 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parsed_time = parse_time_input(user_input)
 
     if parsed_time:
-        context.user_data["start_datetime"] = parsed_time["start"]
-        context.user_data["end_datetime"] = parsed_time["end"]
-        context.user_data["date_str"] = parsed_time["date_str"]  
+        context.user_data["start_time"] = parsed_time["start_time"]
+        context.user_data["end_time"] = parsed_time["end_time"]
+        context.user_data["date"] = parsed_time["date"]  
         
         await update.message.reply_text("Enter venue/location:")
         return VENUE
@@ -172,12 +158,7 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return TIME
     
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = update.message.text
     context.user_data["venue"] = update.message.text
-
-   
-    parsed_location = parse_location(user_input)
-    context.user_data["location"] = parsed_location
 
     keyboard = [
         [InlineKeyboardButton("Beginner", callback_data="Beginner")],
@@ -203,7 +184,6 @@ async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🕒 Time: {game_data['time']}\n"
         f"📍 Venue: {game_data['venue']}\n"
         f"📊 Skill: {game_data['skill'].title()}\n"
-        f"🔗Telegram link: {game_data['group_link']}\n"
     )
 
     keyboard = [
@@ -215,6 +195,94 @@ async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=summary,reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return CONFIRMATION
+
+async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    db = context.bot_data['db']
+
+    try:
+
+        game_data = context.user_data
+
+        if context.user_data.get("auto_create_group"):
+            loading_msg = await query.edit_message_text(
+                text="🔄 Creating your game group... Please wait!",
+                reply_markup=None
+            ) 
+            
+            group_result = await telethon_service.create_game_group(
+                game_data, 
+                update.effective_user
+            )
+            
+            if group_result:
+                game_data["group_link"] = group_result["group_link"]
+                game_data["group_id"] = group_result["group_id"]
+                game_data["group_name"] = group_result["group_name"]
+                
+                await loading_msg.edit_text(
+                    text="✅ Group created successfully! Saving game...",
+                    reply_markup=None
+                )
+            else:
+                await loading_msg.edit_text(
+                    text="❌ Failed to create group. Please try again. ",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔄 Try Again", callback_data="confirm_game")],
+                        [InlineKeyboardButton("❌ Cancel", callback_data="cancel_game")]
+                    ])
+                )
+                return CONFIRMATION
+        
+        game_doc_data = {
+            "sport": game_data["sport"],
+            "time": game_data["time"],  
+            "venue": game_data["venue"], 
+            "skill": game_data["skill"],
+            "group_link": game_data["group_link"],
+            "start_time": game_data.get("start_time"),  
+            "end_time": game_data.get("end_time"), 
+            "date": game_data.get("date"), 
+            "host": update.effective_user.id,
+            "players": [update.effective_user.id],
+            "status": "open",
+            "group_id": game_data.get("group_id"), 
+            "group_name": game_data.get("group_name"),  
+            "auto_created": context.user_data.get("auto_create_group", False)
+        }
+        
+        game_id = db.save_game(game_doc_data)
+
+        announcement_msg = await post_announcement(context, game_data, update.effective_user)
+    
+        db.update_game(game_id, {"announcement_msg_id": announcement_msg.message_id})
+    
+       
+        if context.user_data.get("auto_create_group"):
+            success_text = f"\n🎉 Group '{game_data.get('group_name')}' created and announced!"
+        
+        success_text += f"\n\nView announcement: {announcement_msg.link}"
+
+        await query.edit_message_text(
+            text=success_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔗 Join Group", url=game_data["group_link"])]
+            ])
+        )
+
+        context.user_data.clear()
+        return ConversationHandler.END
+   
+    except Exception as e:
+        print(f"Error saving game: {str(e)}")
+
+        await query.edit_message_text(
+            text ="⚠️ Failed to save game. Please try again.",
+            reply_markup=None
+            )
+        return ConversationHandler.END
 
 async def post_announcement(context, game_data, user):
     ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")

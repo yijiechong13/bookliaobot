@@ -8,6 +8,8 @@ from cancelagame import *
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
 from savegame import GameDatabase
+from telethon_service import telethon_service
+import asyncio
 
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
@@ -19,7 +21,13 @@ def main():
 
     db = GameDatabase()
     application.bot_data['db'] = db
+
+    async def init_telethon():
+        await telethon_service.initialize()
     
+     # Run initialization
+    asyncio.get_event_loop().run_until_complete(init_telethon())
+
     host_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(host_game, pattern="^host_game$")],
         states= {
@@ -30,9 +38,6 @@ def main():
         ],
             ASK_BOOKING: [CallbackQueryHandler(handle_venue_response, pattern="^(venue_yes|venue_no)$")],
             WAITING_BOOKING_CONFIRM: [CallbackQueryHandler(after_booking, pattern="^done_booking$")],
-            WAITING_FOR_GROUP_LINK: [CallbackQueryHandler(handle_telegram_group_response, pattern="^(group_yes|group_no)$")], 
-            GET_GROUP_LINK: [CallbackQueryHandler(get_group_link)], 
-            RECEIVED_GROUP_LINK:[MessageHandler(filters.TEXT & ~filters.COMMAND, receive_group_link)],
             SPORT: [CallbackQueryHandler(sport_chosen)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],

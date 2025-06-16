@@ -46,69 +46,14 @@ def parse_time_input(time_str):
             end_hour += 12
         elif end_period == 'am' and end_hour == 12:
             end_hour = 0
-        
-        # Create datetime objects
-        start_datetime = sg_tz.localize(
-            datetime.combine(target_date, datetime.min.time().replace(hour=start_hour))
-        )
-        end_datetime = sg_tz.localize(
-            datetime.combine(target_date, datetime.min.time().replace(hour=end_hour))
-        )
 
         return {
-            "start": start_datetime,
-            "end": end_datetime,
-            "date_str": get_date_str(target_date, datetime.now(sg_tz))
+            "date": str(target_date),
+            "start_time": f"{start_hour:02d}:00",
+            "end_time":  f"{end_hour:02d}:00"
+            
         }
         
     except Exception as e:
         print(f"Error parsing time: {e}")
         return None
-
-def get_date_str(target_date, now):
-    """Convert date into string representation"""
-    if target_date == now.date():
-        return "today"
-    elif target_date == (now + timedelta(days=1)).date():
-        return "tomorrow"
-    else:
-        return target_date.strftime("%A")
-
-
-def parse_location(venue_str):
-    venue_lower = venue_str.lower()
-    
-    location_keywords = {
-        "utown": ["utown", "university town", "ut", "utown field", "utown court"],
-        "src": ["src", "sports recreation center", "sports center"],
-        "tembusu": ["tembusu", "tem", "tembusu court"],
-        "rvrc": ["rvrc", "ridge view", "ridgeview"],
-        "capt": ["capt", "college of alice and peter tan"],
-        "kent_ridge": ["kent ridge", "kr", "kent ridge common"],
-        "pgp": ["pgp", "prince george park", "prince george's park"],
-        "computing": ["computing", "com", "comp", "school of computing"],
-        "engineering": ["engineering", "eng", "faculty of engineering"],
-        "arts": ["arts", "fass", "faculty of arts"],
-        "nus": ["nus", "national university"]
-    }
-    
-    for location, keywords in location_keywords.items():
-        if any(keyword in venue_lower for keyword in keywords):
-            return location
-    
-    first_word = venue_str.split()[0].lower()
-    return first_word if first_word else "other"
-
-if __name__ == "__main__":
-    test_cases = [
-        "today 2pm-4pm",
-        "tomorrow 9am-11am", 
-        "monday 3pm-5pm",
-        "Dec 25 10am-12pm",
-        "25/12 1pm-3pm",
-        "next friday 7pm-9pm"
-    ]
-    
-    for test in test_cases:
-        result = parse_time_input(test)
-        print(f"'{test}' -> {result}")

@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils import *
 from createagame import *
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data.clear() 
@@ -19,61 +20,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Let's get started! Choose an option below:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
-
-async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    db = context.bot_data['db']
-
-    try:
-
-        game_data = context.user_data
-
-        if not game_data['group_link'].startswith(("https://t.me/+", "https://telegram.me/")):
-            await query.edit_message_text("❌ Invalid Telegram group link")
-            return ConversationHandler.END
-        
-        game_doc_data = {
-            "sport": game_data["sport"],
-            "time": game_data["time"],  
-            "venue": game_data["venue"], 
-            "skill": game_data["skill"],
-            "group_link": game_data["group_link"],
-            "location": game_data.get("location", "other"),  
-            "start_datetime": game_data.get("start_datetime"),  
-            "end_datetime": game_data.get("end_datetime"), 
-            "date_str": game_data.get("date_str", "unknown"), 
-            "host": update.effective_user.id,
-            "players": [update.effective_user.id],
-            "status": "open",
-        }
-        
-        game_id = db.save_game(game_doc_data)
-
-        announcement_msg = await post_announcement(context, game_data, update.effective_user)
-    
-        db.update_game(game_id, {"announcement_msg_id": announcement_msg.message_id})
-    
-        await query.edit_message_text(
-            text=f"✅ Game created and announced!\n\nView announcement: {announcement_msg.link}",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔗 Join Group", url=game_data["group_link"])]
-            ])
-        )
-
-        context.user_data.clear()
-        return ConversationHandler.END
-   
-    except Exception as e:
-        print(f"Error saving game: {str(e)}")
-
-        await query.edit_message_text(
-            text ="⚠️ Failed to save game. Please try again.",
-            reply_markup=None
-            )
-        return ConversationHandler.END
     
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -83,6 +29,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
 
     if update.callback_query:
         await update.callback_query.message.reply_text(

@@ -1,15 +1,12 @@
-import os
-from dotenv import load_dotenv
 ##import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, JobQueue
 from mainhandlers import *
 from hosthandlers import *
-
-
-load_dotenv()
+from joingamehandlers import *
+from config import * 
+from .env import *
 
 def main():
-    TOKEN = os.getenv("BOT_TOKEN")
     application = Application.builder().token(TOKEN).build()
     
     host_conv = ConversationHandler (
@@ -31,11 +28,31 @@ def main():
         conversation_timeout = 300, 
         allow_reentry = True, 
     )
+    
+    join_conv = ConversationHandler (
+        entry_points=[CallbackQueryHandler(join_game, pattern="^join_game$")],
+        states= {
+            SPORT: [CallbackQueryHandler(sport_chosen)],
+            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
+            VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
+            SKILL: [CallbackQueryHandler(skill_chosen)],
+            CONFIRMATION: [CallbackQueryHandler(save_game, pattern="^confirm_game$"),
+                           CallbackQueryHandler(cancel, pattern="^cancel_game$")],
+            SHOWING_RESULTS: [CallbackQueryHandler(handle_navigation, pattern="^(prev_game|next_game)$"),
+                              CallbackQueryHandler(join_game, pattern="^(join_selected$"),
+                              CallbackQueryHandler(handle_filter_selection, pattern="^(back_to_filters$")]
+        },
+        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        conversation_timeout = 300, 
+        allow_reentry = True, 
+    )
+
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cancel', cancel))
 
     application.add_handler(host_conv)
+    application.add_handler(join_conv)
 
     application.add_error_handler(error_handler)
 

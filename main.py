@@ -4,7 +4,12 @@ from mainhandlers import *
 from hosthandlers import *
 from joingamehandlers import *
 from config import * 
-from .env import *
+from dotenv import load_dotenv
+import os
+load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
+FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
+from firebase_init import db
 
 def main():
     application = Application.builder().token(TOKEN).build()
@@ -25,6 +30,7 @@ def main():
                            CallbackQueryHandler(cancel, pattern="^cancel_game$")]
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        per_message = False,
         conversation_timeout = 300, 
         allow_reentry = True, 
     )
@@ -32,17 +38,24 @@ def main():
     join_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(join_game, pattern="^join_game$")],
         states= {
-            SPORT: [CallbackQueryHandler(sport_chosen)],
-            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
-            VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
-            SKILL: [CallbackQueryHandler(skill_chosen)],
-            CONFIRMATION: [CallbackQueryHandler(save_game, pattern="^confirm_game$"),
-                           CallbackQueryHandler(cancel, pattern="^cancel_game$")],
-            SHOWING_RESULTS: [CallbackQueryHandler(handle_navigation, pattern="^(prev_game|next_game)$"),
-                              CallbackQueryHandler(join_game, pattern="^(join_selected$"),
-                              CallbackQueryHandler(handle_filter_selection, pattern="^(back_to_filters$")]
+            SETTING_SPORTS: [CallbackQueryHandler(filter_sport, pattern="^filter_sport$"),
+                             CallbackQueryHandler(toggle_sport,pattern="^toggle_sport_"),
+                             CallbackQueryHandler(apply_sport_filters,pattern="^apply_sport_filters$"),
+                             CallbackQueryHandler(join_selected_game, pattern="^join_selected_"),
+                             CallbackQueryHandler(show_filter_menu,pattern="^back_to_filters$"),],
+            SETTING_SKILL: [CallbackQueryHandler(handle_filter_selection, pattern="^filter_skill$"),
+                            CallbackQueryHandler(save_filter,pattern="^set_skill_"),
+                            CallbackQueryHandler(show_filter_menu,pattern="^back_to_filters$"),],
+            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: save_text_filter(u, c, 'time', u.message.text)),
+                   CallbackQueryHandler(handle_filter_selection,pattern="^filter_")],
+            VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND,  lambda u, c: save_text_filter(u, c, 'venue', u.message.text)),
+                   CallbackQueryHandler(handle_filter_selection,pattern="^filter_")],
+            BROWSE_GAMES: [CallbackQueryHandler(handle_navigation, pattern="^(prev_game|next_game)$"),
+                           CallbackQueryHandler(join_selected_game, pattern="^join_selected_"),
+                           CallbackQueryHandler(show_filter_menu, pattern="^back_to_filters$")]
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        per_message = False,
         conversation_timeout = 300, 
         allow_reentry = True, 
     )
@@ -56,10 +69,27 @@ def main():
 
     application.add_error_handler(error_handler)
 
-    application.run_polling(
-    poll_interval=1,
-    drop_pending_updates=True
-)   
+    try:
+        application.run_polling()
+    except Exception as e:
+        print(f"Fatal error: {str(e)}")
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    error = str(context.error)
+    print(f"Global error handler caught: {error}")
+    
+    if update.callback_query:
+        try:
+            await update.callback_query.message.reply_text(
+                "⚠️ An error occurred. Please try again or use /start to restart."
+            )
+        except:
+            pass
+    elif update.message:
+        await update.message.reply_text(
+            "⚠️ An error occurred. Please try again or use /start to restart."
+        )
 
 if __name__ == "__main__":
     main()

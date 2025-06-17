@@ -129,33 +129,45 @@ async def sport_chosen (update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data["sport"] = query.data
-    await query.edit_message_text("What time is the game? (e.g., 'Today 6pm-8pm' or 'Saturday 2pm-4pm'):"
-    )
+    await query.edit_message_text("Please enter the game date (dd/mm/yyyy):")
+    return DATE
+
+async def date_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE): 
+    user_input = update.message.text
+    
+    is_valid, date = validate_date_format(user_input)
+
+    if not is_valid: 
+        await update.message.reply_text(f"❌{date}\n\nPlease enter the date again:")
+        return DATE
+    
+    context.user_data["date"] = date
+    await update.message.reply_text("What time is the game? E.g 2pm-4pm")
     return TIME
 
 async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
-    context.user_data["time"] = user_input
 
-    parsed_time = parse_time_input(user_input)
-
-    if parsed_time:
-        context.user_data["start_time"] = parsed_time["start_time"]
-        context.user_data["end_time"] = parsed_time["end_time"]
-        context.user_data["date"] = parsed_time["date"]  
-        
-        await update.message.reply_text("Enter venue/location:")
-        return VENUE
+    time_data, error = parse_time_input(user_input)
     
-    else:
+    if error:
         await update.message.reply_text(
-            "⚠️ I couldn't understand the time format. Please try again with formats like:\n"
-            "• 'Today 6pm-8pm'\n"
-            "• 'Tomorrow 2pm-4pm'\n"
-            "• 'Saturday 10am-12pm'\n"
-            "• 'Dec 25 3pm-5pm'"
+            f"❌ {error}\n\n"
+            "Please try again with formats like:\n"
+            "• 2pm-4pm\n"
+            "• 14:00-16:00\n"
+            "• 2:30pm-4:30pm"
         )
         return TIME
+    
+    context.user_data["time_display"] = time_data["display_format"]
+    context.user_data["start_time_24"] = time_data["start_time_24"]
+    context.user_data["end_time_24"] = time_data["end_time_24"]
+    context.user_data["time_original"] = time_data["original_input"]
+    
+    await update.message.reply_text("Enter the venue/location:")
+    return VENUE
+    
     
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["venue"] = update.message.text
@@ -181,7 +193,8 @@ async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = (
         f"🏟️ New Game Listing:\n\n"
         f"🏀 Sport: {game_data['sport']}\n"
-        f"🕒 Time: {game_data['time']}\n"
+        f"📅 Date: {game_data['date']}\n"
+        f"🕒 Time: {game_data['time_display']}\n"
         f"📍 Venue: {game_data['venue']}\n"
         f"📊 Skill: {game_data['skill'].title()}\n"
     )
@@ -238,24 +251,29 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         game_doc_data = {
             "sport": game_data["sport"],
-            "time": game_data["time"],  
+            "date": game_data["date"],
+            "time_display": game_data["time_display"],  
             "venue": game_data["venue"], 
             "skill": game_data["skill"],
-            "group_link": game_data["group_link"],
-            "start_time": game_data.get("start_time"),  
-            "end_time": game_data.get("end_time"), 
-            "date": game_data.get("date"), 
+            "group_link": game_data["group_link"], 
+            "end_time_24": game_data["end_time_24"],      
             "host": update.effective_user.id,
-            "players": [update.effective_user.id],
             "status": "open",
             "group_id": game_data.get("group_id"), 
-            "group_name": game_data.get("group_name"),  
-            "auto_created": context.user_data.get("auto_create_group", False)
         }
         
         game_id = db.save_game(game_doc_data)
 
-        announcement_msg = await post_announcement(context, game_data, update.effective_user)
+        announcement_data = {
+            "sport": game_data["sport"],
+            "date": game_data["date"],
+            "time_display": game_data["time_display"],  
+            "venue": game_data["venue"],
+            "skill": game_data["skill"],
+            "group_link": game_data["group_link"]
+        }
+
+        announcement_msg = await post_announcement(context, announcement_data, update.effective_user)
     
         db.update_game(game_id, {"announcement_msg_id": announcement_msg.message_id})
     
@@ -288,7 +306,8 @@ async def post_announcement(context, game_data, user):
     ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
     announcement_text = (
         f"🎮 New {game_data['sport']} Game!\n\n"
-        f"🕒 Time: {game_data['time']}\n"
+        f"📅 Date: {game_data['date']}\n"
+        f"🕒 Time: {game_data['time_display']}\n"
         f"📍 Venue: {game_data['venue']}\n"
         f"📊 Skill Level: {game_data['skill'].title()}\n"
         f"👤 Host: @{user.username or 'Anonymous'}\n\n"

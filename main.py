@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, JobQueue
 from mainhandlers import *
 from createagame import *
-from cancelagame import *
+from hostedgames import *  
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
 from savegame import GameDatabase
@@ -19,7 +19,7 @@ def main():
     TOKEN = os.getenv("BOT_TOKEN")
     application = Application.builder().token(TOKEN).build()
 
-    db = GameDatabase()
+    db = GameDatabase()   
     application.bot_data['db'] = db
 
     async def init_telethon():
@@ -39,6 +39,7 @@ def main():
             ASK_BOOKING: [CallbackQueryHandler(handle_venue_response, pattern="^(venue_yes|venue_no)$")],
             WAITING_BOOKING_CONFIRM: [CallbackQueryHandler(after_booking, pattern="^done_booking$")],
             SPORT: [CallbackQueryHandler(sport_chosen)],
+            DATE:[MessageHandler(filters.TEXT & ~filters.COMMAND, date_chosen)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
             SKILL: [CallbackQueryHandler(skill_chosen)],

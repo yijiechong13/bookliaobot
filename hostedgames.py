@@ -44,7 +44,7 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"📋 Your Game Listing ({current_index + 1}/{len(games)}):\n\n"
         f"🏀 Sport: {game['sport']}\n"
-        f"🕒 Time: {game['time']}\n"
+        f"🕒 Time: {game['time_display']}\n"
         f"📍 Venue: {game['venue']}\n"
         f"📊 Skill: {game['skill'].title()}\n"
         f"🔗 Group: {game['group_link']}\n"
@@ -114,7 +114,7 @@ async def confirm_cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Update database
     announcement_msg_id = db.cancel_game(game['id'])
     
-    # Try to update announcement message
+    #Update announcement channel message 
     if announcement_msg_id:
         ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
         try:

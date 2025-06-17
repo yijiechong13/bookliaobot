@@ -19,4 +19,5 @@ venv\Scripts\activate #windows
 # Get these from https://my.telegram.org/auth
 TELEGRAM_API_ID=your_api_id
 TELEGRAM_API_HASH=your_api_hash 
+TELEGRAM_PHONE_NUMBER=your phone number
 

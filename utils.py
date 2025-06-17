@@ -1,59 +1,100 @@
 import re
-import dateparser
 from datetime import datetime, timedelta
 import pytz
 
-def parse_time_input(time_str):
-    try:
-        sg_tz = pytz.timezone('Asia/Singapore')
-        
-        time_pattern = r"(\d{1,2})\s*(am|pm)\s*-\s*(\d{1,2})\s*(am|pm)"
-        time_match = re.search(time_pattern, time_str.lower())
-        
-        if not time_match:
-            return None
-            
-        date_str = re.sub(time_pattern, '', time_str.lower()).strip()
-        
-        settings = {
-            'TIMEZONE': 'Asia/Singapore',
-            'RETURN_AS_TIMEZONE_AWARE': True,
-            'PREFER_DATES_FROM': 'future',  
-            'RELATIVE_BASE': datetime.now(sg_tz)
-        }
-        
-        # Parse the date
-        parsed_date = dateparser.parse(date_str, settings=settings)
-        
-        if not parsed_date:
-            return None
-            
-        target_date = parsed_date.date()
-        
-        
-        start_hour = int(time_match.group(1))
-        start_period = time_match.group(2)
-        end_hour = int(time_match.group(3))
-        end_period = time_match.group(4)
-        
-    
-        if start_period == 'pm' and start_hour != 12:
-            start_hour += 12
-        elif start_period == 'am' and start_hour == 12:
-            start_hour = 0
-            
-        if end_period == 'pm' and end_hour != 12:
-            end_hour += 12
-        elif end_period == 'am' and end_hour == 12:
-            end_hour = 0
 
-        return {
-            "date": str(target_date),
-            "start_time": f"{start_hour:02d}:00",
-            "end_time":  f"{end_hour:02d}:00"
+def validate_date_format(date_str): 
+    try: 
+        if not re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', date_str):
+            return False, "Please use dd/mm/yyyy format (e.g., 25/12/2025)"
+        
+        day, month, year = map(int, date_str.split('/'))
+
+        if not (1 <= day <= 31):
+            return False, "Day must be between 1 and 31"
+        if not (1 <= month <= 12):
+            return False, "Month must be between 1 and 12"
+        if year < 2024:
+            return False, "Year must be 2025 or later"
+        
+        #Create datetime object : Validate if date exist
+        test_date = datetime(year, month, day)
+
+        #Singapore timezone
+        sg_tz = pytz.timezone("Asia/Singapore")
+        today = datetime.now(sg_tz).date()
+        if test_date.date() < today: 
+            return False, "Date cannot be in the past"
+        
+        return True, date_str  
+
+    except ValueError:
+        return False, "Invalid date. Please check your input (e.g., 25/12/2025)"
+    
+def parse_time_input(time_str):
+
+    try: 
+        time_str = time_str.strip().lower()
+
+        time_pattern = r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)' 
+    
+        match = re.search(time_pattern, time_str)
+        if match:
+            start_hour = int(match.group(1))
+            start_min = int(match.group(2)) if match.group(2) else 0
+            start_period = match.group(3)
+            end_hour = int(match.group(4))
+            end_min = int(match.group(5)) if match.group(5) else 0
+            end_period = match.group(6)
             
-        }
+            # Convert to 24-hour format
+            start_24 = convert_to_24_hour(start_hour, start_period)
+            end_24 = convert_to_24_hour(end_hour, end_period)
+            
+            if start_24 is None or end_24 is None:
+                return None, "Invalid time format"
+                  
+            return {
+                "original_input": time_str,
+                "start_time_24": f"{start_24:02d}:{start_min:02d}",
+                "end_time_24": f"{end_24:02d}:{end_min:02d}",
+                "display_format": f"{start_hour}{':{:02d}'.format(start_min) if start_min else ''}{start_period}-{end_hour}{':{:02d}'.format(end_min) if end_min else ''}{end_period}"
+            }, None
         
     except Exception as e:
-        print(f"Error parsing time: {e}")
+        return None, f"Error parsing time: {str(e)}"
+
+
+def convert_to_24_hour(hour, period):
+    try:
+        if period == 'am':
+            return 0 if hour == 12 else hour
+        else:  # pm
+            return 12 if hour == 12 else hour + 12
+    except:
         return None
+
+def is_game_expired(date_str, end_time_24):  
+
+    try:
+        day, month, year = map(int, date_str.split("/"))
+
+        end_hour, end_min = map(int, end_time_24.split(":"))
+
+        game_end = datetime(year, month, day, end_hour, end_min)
+
+        sg_tz = pytz.timezone("Asia/Singapore")
+        gane_end = sg_tz.localize(game_end)
+
+        now = datetime.now(sg_tz)
+
+        return now > game_end 
+    
+    except Exception as e: 
+        print(f"Error checking expiration: {e}")
+        return False
+    
+
+
+
+

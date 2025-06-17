@@ -30,7 +30,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-
     if update.callback_query:
         await update.callback_query.message.reply_text(
             "⚠️ An error occurred. Please try again or /start"

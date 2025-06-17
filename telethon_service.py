@@ -1,8 +1,7 @@
 import os
 from telethon import TelegramClient
 from telethon.tl.functions.messages import ExportChatInviteRequest
-from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest
-from telethon.tl.types import ChatAdminRights
+from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest
 from dotenv import load_dotenv
 import logging
 
@@ -27,7 +26,8 @@ class TelethonService:
             self.client = TelegramClient('bot_session', self.api_id, self.api_hash)
             
             #Connects to telegeram and logs in to account: can use via phone number or bot accounts 
-            await self.client.start(bot_token=self.bot_token)
+            #only user account can create group (bot token cannot)
+            await self.client.start(phone=self.phone_number)
             self.initialized = True
 
         except Exception as e:
@@ -46,7 +46,7 @@ class TelethonService:
             #Group description 
             description = (
                 f"🏀 Sport: {game_data['sport']}\n"
-                f"🕒 Time: {game_data['time']}\n"
+                f"🕒 Time: {game_data['time_display']}\n"
                 f"📍 Venue: {game_data['venue']}\n"
                 f"📊 Skill Level: {game_data['skill'].title()}\n"
                 f"👤 Host: @{host_user.username or host_user.first_name}\n\n"
@@ -87,7 +87,6 @@ class TelethonService:
     
     
     async def close(self):
-        """Close the Telethon client"""
         if self.client:
             await self.client.disconnect()
 

@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 from utils import is_game_expired
+from telegram.ext import ContextTypes
 
 
 load_dotenv() 
@@ -22,6 +23,7 @@ class GameDatabase:
         game_ref.set(game_data)
         return game_ref.id
     
+    #Targets specfic firestore document using game_id
     def update_game(self, game_id, update_data):
         game_ref = self.db.collection("game").document(game_id)
         game_ref.update(update_data)
@@ -46,7 +48,7 @@ class GameDatabase:
             for game_doc in results:
                 game_data = game_doc.to_dict()
                 
-                if self._check_game_expired(game_data):
+                if self.check_game_expired(game_data):
                     
                     game_doc.reference.update({
                         "status": "closed",
@@ -61,7 +63,7 @@ class GameDatabase:
             print(f"Error closing expired games: {e}")
             return 0
         
-    def _check_game_expired(self, game_data):
+    def check_game_expired(self, game_data):
         try:
             date_str = game_data.get('date')
             end_time_24 = game_data.get('end_time_24')
@@ -71,7 +73,9 @@ class GameDatabase:
         except Exception as e:
             print(f"Error checking game expiration: {e}")
             return False
-        
+
+    #to update status 
+    #returns announcement msg id    
     def cancel_game(self, game_id): 
         try:
             game_ref = self.db.collection("game").document(game_id)
@@ -85,6 +89,7 @@ class GameDatabase:
                 game_ref.update({"status": "cancelled"})
                 
                 return announcement_msg_id 
+            
             return None
         except Exception as e:
             print(f"Error cancelling game: {e}")

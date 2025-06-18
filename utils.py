@@ -61,6 +61,9 @@ def parse_time_input(time_str):
                 "display_format": f"{start_hour}{':{:02d}'.format(start_min) if start_min else ''}{start_period}-{end_hour}{':{:02d}'.format(end_min) if end_min else ''}{end_period}"
             }, None
         
+        else:
+            return None, "Time format is not recognised. Please use format like '2pm-5pm'. "
+        
     except Exception as e:
         return None, f"Error parsing time: {str(e)}"
 
@@ -84,7 +87,7 @@ def is_game_expired(date_str, end_time_24):
         game_end = datetime(year, month, day, end_hour, end_min)
 
         sg_tz = pytz.timezone("Asia/Singapore")
-        gane_end = sg_tz.localize(game_end)
+        game_end = sg_tz.localize(game_end)
 
         now = datetime.now(sg_tz)
 

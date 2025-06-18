@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 ##import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, JobQueue
-from mainhandlers import *
 from createagame import *
 from hostedgames import *  
 from warnings import filterwarnings
@@ -15,12 +14,65 @@ filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBU
 
 load_dotenv()
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+        context.user_data.clear() 
+
+        keyboard = [
+            [InlineKeyboardButton("🏟️ Host a Game", callback_data="host_game")],
+            [InlineKeyboardButton("👥 Join a Game", callback_data="join_game")],
+        ]
+        await update.message.reply_text(
+            "🎉 Welcome to BookLiao Bot! \nNice to meet you! This bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n " \
+            "You can: " 
+            "\n 🏟️ Host a Game - set the sport, time, venue, and we'll help you find players " \
+            "\n👥 Join a Game - browse open listings that match your schedule and interests \n\n " \
+            "Let's get started! Choose an option below:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    context.user_data.clear() 
+
+    await update.message.reply_text("Cancelled. Use /start to begin again")
+    return ConversationHandler.END
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if update.callback_query:
+        await update.callback_query.message.reply_text(
+            "⚠️ An error occurred. Please try again or /start"
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "⚠️ An error occurred. Please try again or /start"
+        )
+        
+async def cleanup_expired_games(context):
+    try:
+        db = context.bot_data['db']
+        expired_count = db.close_expired_games() 
+        if expired_count > 0: 
+            print(f"Closed {expired_count} expired games")
+    except Exception as e:
+        print (f"Error in cleanup job: {e}") 
+
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
     application = Application.builder().token(TOKEN).build()
 
     db = GameDatabase()   
     application.bot_data['db'] = db
+
+    job_queue = application.job_queue
+    
+    #Run cleanup every hour
+    job_queue.run_repeating(
+        cleanup_expired_games,
+        interval = timedelta(hours=1),
+        first = 10
+    )
 
     async def init_telethon():
         await telethon_service.initialize()
@@ -59,6 +111,7 @@ def main():
         conversation_timeout = 300, 
         allow_reentry = True, per_chat = True
     )
+
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cancel', cancel))

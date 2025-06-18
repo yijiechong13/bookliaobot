@@ -121,7 +121,7 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
 
         await update.message.reply_text(
-            "which sport are you hosting?",
+            "Which sport are you hosting?",
             reply_markup = InlineKeyboardMarkup(keyboard))
         return SPORT
 
@@ -274,7 +274,8 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         announcement_msg = await post_announcement(context, announcement_data, update.effective_user)
-    
+
+        #Store announcement message id for status updates later on 
         db.update_game(game_id, {"announcement_msg_id": announcement_msg.message_id})
     
        

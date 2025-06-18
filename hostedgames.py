@@ -121,7 +121,7 @@ async def confirm_cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE
             await context.bot.edit_message_text(
                 chat_id=ANNOUNCEMENT_CHANNEL,
                 message_id=announcement_msg_id,
-                text=f"❌ CANCELLED: {game['sport']} Game at {game['venue']} on {game['time']}"
+                text=f"❌ CANCELLED: {game['sport']} Game at {game['venue']} on {game['time_display']}"
             )
         except Exception as e:
             print(f"Couldn't update announcement: {e}")
@@ -139,7 +139,6 @@ async def confirm_cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return HOST_MENU
     
-    # Adjust current index if needed
     if context.user_data["current_game_index"] >= len(games):
         context.user_data["current_game_index"] = len(games) - 1
     

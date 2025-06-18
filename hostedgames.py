@@ -15,7 +15,7 @@ async def view_hosted_games(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = context.bot_data['db']
     
     user_id = update.effective_user.id
-    games = db.get_hosted_games(user_id)
+    games = await db.get_hosted_games(user_id)
     
     if not games:
         await query.edit_message_text(
@@ -121,7 +121,8 @@ async def confirm_cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE
             await context.bot.edit_message_text(
                 chat_id=ANNOUNCEMENT_CHANNEL,
                 message_id=announcement_msg_id,
-                text=f"❌ CANCELLED: {game['sport']} Game at {game['venue']} on {game['time_display']}"
+                text=f"❌ CANCELLED: {game['sport']} Game at {game['venue']} on {game['time_display']}",
+                reply_markup = None
             )
         except Exception as e:
             print(f"Couldn't update announcement: {e}")

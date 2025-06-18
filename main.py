@@ -9,6 +9,7 @@ from telegram.warnings import PTBUserWarning
 from savegame import GameDatabase
 from telethon_service import telethon_service
 import asyncio
+from datetime import timedelta
 
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
@@ -52,9 +53,11 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cleanup_expired_games(context):
     try:
         db = context.bot_data['db']
-        expired_count = db.close_expired_games() 
+        expired_count = await db.close_expired_games(context) 
         if expired_count > 0: 
             print(f"Closed {expired_count} expired games")
+        else: 
+            print("No expired games found")
     except Exception as e:
         print (f"Error in cleanup job: {e}") 
 
@@ -71,7 +74,7 @@ def main():
     job_queue.run_repeating(
         cleanup_expired_games,
         interval = timedelta(hours=1),
-        first = 10
+        first = 5
     )
 
     async def init_telethon():

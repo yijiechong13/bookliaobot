@@ -28,20 +28,21 @@ class GameDatabase:
         game_ref = self.db.collection("game").document(game_id)
         game_ref.update(update_data)
 
-    def get_hosted_games(self, host_id):
+    async def get_hosted_games(self, host_id):
 
         #clean up expired games 
-        self.close_expired_games() 
+        await self.close_expired_games() 
 
         games_ref = self.db.collection("game")
         query = games_ref.where("host", "==", host_id).where("status", "==", "open")
         results = query.stream()
         return [{"id": game.id, **game.to_dict()} for game in results] 
     
-    def close_expired_games(self): 
+    async def close_expired_games(self,context: ContextTypes.DEFAULT_TYPE): 
         try: 
             games_ref = self.db.collection("game")
             query = games_ref.where("status", "==", "open")
+            db = context.bot_data['db']
             results = query.stream()
 
             expired_count = 0
@@ -49,20 +50,34 @@ class GameDatabase:
                 game_data = game_doc.to_dict()
                 
                 if self.check_game_expired(game_data):
-                    
                     game_doc.reference.update({
                         "status": "closed",
                         "closed_at": firestore.SERVER_TIMESTAMP
                     })
+
+                    announcement_msg_id = db.cancel_game(game_doc.id)
+
+                    if announcement_msg_id:
+                        ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
+                        try:
+                            await context.bot.edit_message_text(
+                                chat_id=ANNOUNCEMENT_CHANNEL,
+                                message_id=announcement_msg_id,
+                                text=f"❌ EXPIRED: {game_data.get('sport')} Game at {game_data.get('venue')} on {game_data.get('time_display')}",
+                                reply_markup = None #Remove join button
+                            )
+                        except Exception as e:
+                            print(f"Couldn't update announcement: {e}")
+
                     expired_count += 1
                     print(f"Closed expired game: {game_data.get('sport')} on {game_data.get('date')}")
             
             return expired_count
             
         except Exception as e:
-            print(f"Error closing expired games: {e}")
-            return 0
-        
+                print(f"Error closing expired games: {e}")
+                return 0
+
     def check_game_expired(self, game_data):
         try:
             date_str = game_data.get('date')

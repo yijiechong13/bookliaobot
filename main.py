@@ -38,23 +38,41 @@ def main():
     join_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(join_game, pattern="^join_game$")],
         states= {
-            SETTING_SPORTS: [CallbackQueryHandler(filter_sport, pattern="^filter_sport$"),
-                             CallbackQueryHandler(toggle_sport,pattern="^toggle_sport_"),
-                             CallbackQueryHandler(apply_sport_filters,pattern="^apply_sport_filters$"),
-                             CallbackQueryHandler(join_selected_game, pattern="^join_selected_"),
-                             CallbackQueryHandler(show_filter_menu,pattern="^back_to_filters$"),],
-            SETTING_SKILL: [CallbackQueryHandler(handle_filter_selection, pattern="^filter_skill$"),
-                            CallbackQueryHandler(save_filter,pattern="^set_skill_"),
-                            CallbackQueryHandler(show_filter_menu,pattern="^back_to_filters$"),],
-            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: save_text_filter(u, c, 'time', u.message.text)),
-                   CallbackQueryHandler(handle_filter_selection,pattern="^filter_")],
-            VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND,  lambda u, c: save_text_filter(u, c, 'venue', u.message.text)),
-                   CallbackQueryHandler(handle_filter_selection,pattern="^filter_")],
+            SETTING_FILTERS: [
+                CallbackQueryHandler(handle_filter_selection,pattern="^filter_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),
+                CallbackQueryHandler(show_results,pattern="^show_results$"),],
+            SETTING_SPORTS: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_sport_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_sport_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_sport$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_SKILL: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_skill_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_skill_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_skill$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_DATE: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_date_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_date_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_date$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_TIME: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_time_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_time_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_time$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_VENUE:[
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_venue_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_venue_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_venue$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
             BROWSE_GAMES: [CallbackQueryHandler(handle_navigation, pattern="^(prev_game|next_game)$"),
                            CallbackQueryHandler(join_selected_game, pattern="^join_selected_"),
-                           CallbackQueryHandler(show_filter_menu, pattern="^back_to_filters$")]
+                           CallbackQueryHandler(back_to_filters, pattern="^back_to_filters$")]
         },
-        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        fallbacks=[CommandHandler('cancel', cancel)],
         per_message = False,
         conversation_timeout = 300, 
         allow_reentry = True, 

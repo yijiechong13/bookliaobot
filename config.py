@@ -15,25 +15,13 @@
 
 #Conversation states for joining games and preference 
 (
+    SETTING_FILTERS,
     SETTING_SPORTS, 
     SETTING_SKILL, 
-    SETTING_LOCATION,
+    SETTING_DATE,
+    SETTING_TIME,
+    SETTING_VENUE,
     BROWSE_GAMES, 
-    GAMES_DETAILS 
-)= range(10, 15)
-
-#Sport options 
-SPORTS = [
-    "⚽ Football", 
-    "🏀 Basketball", 
-    "🎾 Tennis", 
-    "🏐 Volleyball"]
-
-SKILL_LEVEL = [
-    "Beginner", 
-    "Intermediate", 
-    "Advanced", 
-    "Any Level"]
+)= range(10, 17)
 
 RESULTS_PER_PAGE = 5
-GAME_STATUS = ["active", "full", "completed", "cancelled"]

@@ -4,9 +4,12 @@ from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
                           ContextTypes, ConversationHandler)
 from utils import *
 from config import *
+from typing import Optional
 
 from dotenv import load_dotenv
 import os
+import logging
+import telegram
 load_dotenv()
 FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
 from firebase_init import *
@@ -21,159 +24,249 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         'page' : 0,
         'games' : []
     })
-    return await show_filter_menu (update, "🔍 Filter games by:")
+    return await show_filter_menu (update, "🔍 Filter games by:", context)
 
-async def show_filter_menu(update: Update, text: str) -> int:
+async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
+        filters = context.user_data.get('filters', {})
+
         buttons = [
-            ["⚽ Sports", "filter_sport"],
-            ["🕒 Time", "filter_time"],
-            ["📍 Venue", "filter_venue"],
-            ["📊 Skill", "filter_skill"],
-            ["🔍 Show Restults", "show_results"],
+            [f"⚽ Sports {'✅' if 'sport' in filters else ''}", "filter_sport"],
+            [f"📅 Date {'✅' if 'date' in filters else ''}", "filter_date"],
+            [f"🕒 Time {'✅' if 'time' in filters else ''}", "filter_time"],
+            [f"📍 Venue {'✅' if 'venue' in filters else ''}", "filter_venue"],
+            [f"📊 Skill {'✅' if 'skill' in filters else ''}", "filter_skill"],
+            ["🔍 Show Results", "show_results"],
         ]
-        # Create keyboard with one button per row
+
         keyboard = [
             [InlineKeyboardButton(text, callback_data=data)]
             for text, data in buttons
         ]
+
+
+        keyboard.append([
+            InlineKeyboardButton("🧹 Clear Filters", callback_data="clear_filters"),
+            InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
+            ])
         
-        # Add Back button as a separate row
-        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="back_to_filters")])
+        #Filters summary
+        active_filters = "\n".join([f"• {k}: {v}" for k,v in filters.items()]) or "None"
+        message = f"{text} \n\nCurrent filters:\n{active_filters}"
         
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         if update.callback_query:
             await update.callback_query.edit_message_text(
-                text=str(text),
+                text=message,
                 reply_markup=reply_markup
             )
         else:
             await update.message.reply_text(
-                text=str(text),
+                text=message,
                 reply_markup=reply_markup
             )
         
-        return SETTING_SPORTS
+        return SETTING_FILTERS
     except Exception as e:
         print(f"Error in show_filter_menu: {str(e)}")
         if update.callback_query:
             await update.callback_query.message.reply_text("⚠️ Menu error. Please try again.")
         return ConversationHandler.END
 
-
-async def handle_filter_selection(update: Update, context: ContextTypes.DEFAULT_TYPE, filter_type: str) -> int:
-    query = update.callback_query
-    await query.answer()
-    print(f"Callback data received: {query.data}")  # Debug log
-    
-    filter_type = filter_type.split('_')[1]
-    
-    if filter_type == 'sport':
-        return await filter_sport(update,context)
-    elif filter_type == 'time':
-        await query.edit_message_text("What time is the game? (e.g., 'Today 6pm-8pm' or 'Saturday 2pm-4pm'):")
-        return TIME
-    elif filter_type == 'venue':
-        await update.message.reply_text("Enter venue/location:")
-        return VENUE
-    elif filter_type == 'skill':
-        return await filter_skill(update)
-    elif filter_type == 'results':
-        return await show_results(update, context)
-    else:
-        return await show_filter_menu(update,"Select a filter:")
-
-
-async def filter_sport(update: Update,context: ContextTypes.DEFAULT_TYPE):
+async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
 
     try:
-        sports = {doc.to_dict().get("sport") for doc in db.collection("game").stream()}
-        sports.discard(None)
-
-        if not sports:
-            await query.edit_message_text("No sports available.")
-            return SETTING_SPORTS
+        parts = query.data.split('_')
+        if len(parts) < 3:
+            raise ValueError("Invalid callback data format")
         
-        filters = context.user_data.setdefault('filters', {})
-        selected = filters.get('sport', [])
-        selected = [selected] if selected and not isinstance(selected, list) else selected or []
+        filter_type = parts[1]
 
-        keyboard = [
-            [InlineKeyboardButton(
-                f"{'✅ ' if sport in selected else '⚪ '} {sport}",
-                callback_data=f"toggle_sport_{sport}"
-            )]
-            for sport in sorted(sports)
-        ]
-        # Add action buttons
-        keyboard += [
-            [
-                InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
-                InlineKeyboardButton("Apply Filters", callback_data="apply_sport_filters")
-            ]
-        ]
+        if filter_type in context.user_data.get('filters', {}):
+            context.user_data['filters'][filter_type] = []
 
+        if filter_type == 'sport':
+            return await filter_sport(update, context)
+        elif filter_type == 'skill':
+            return await filter_skill(update, context)
+        elif filter_type == 'date':
+            return await filter_date(update, context)
+        elif filter_type == 'time':
+            return await filter_time(update, context)
+        elif filter_type == 'venue':
+            return await filter_venue(update, context)
+    except Exception as e:
+        logging.error(f"Clear filter error : {str(e)}")
+        await query.edit_message_text("Could not clear filters. Please try again later.")
+        return await show_filter_menu(update, "🔍 Filters cleared! Filter games by:", context)
+
+async def back_to_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return await show_filter_menu (update, "🔍 Filter games by:", context)
+
+async def handle_filter_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    
+    filter_type = query.data.split('_')[1]
+    return await show_filter_options(update, context, filter_type)
+
+
+async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE, filter_type:str):
+    query = update.callback_query
+    await query.answer()
+
+    if filter_type == 'sport':
+        options = {doc.to_dict().get("sport") for doc in db.collection("game").stream()}
+        options.discard(None)
+        title = "⚽ Select sports (multiple allowed):"
+    elif filter_type == 'skill':
+        options = {doc.to_dict().get("skill") for doc in db.collection("game").stream()}
+        options.discard(None)
+        title = "📊 Select skill levels (multiple allowed):"
+    elif filter_type == 'date':
+        options = {doc.to_dict().get("date") for doc in db.collection("game").stream()}
+        options.discard(None)
+        title = "📅 Select a date:"
+    elif filter_type == 'time':
+        options = {doc.to_dict().get("time") for doc in db.collection("game").stream()}
+        options.discard(None)
+        title = "⌛ Select a time:"
+    elif filter_type == 'venue':
+        options = {doc.to_dict().get("venue") for doc in db.collection("game").stream()}
+        options.discard(None)
+        title = "📍 Pick venue/location (multiple allowed):"
+    
+    current_selection = context.user_data.get('filters', {}).get(filter_type, [])
+    current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
+
+    keyboard = [
+        [InlineKeyboardButton(
+            f"{'✅ ' if opt in current_selection else ''}{opt}",
+            callback_data=f"toggle_filter_{filter_type}_{opt.lower()}"
+        )] for opt in options
+    ]
+
+    keyboard.append([
+        InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_{filter_type}_filters"),
+        InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
+        InlineKeyboardButton("✅ Apply", callback_data=f"apply_filters_{filter_type}")
+        ])
+    try: 
         await query.edit_message_text(
-            "⚽ Select sports (click to toggle):\n"
-            "✅ = selected | ⚪ = available",
+            title,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-        return SETTING_SPORTS
+    except telegram.error.BadRequest as e:
+        if "not modified" in str(e):
+            pass
+        else:
+            raise
+
+    return (SETTING_SPORTS if filter_type == 'sport' else
+            SETTING_SKILL if filter_type == 'skill' else
+            SETTING_DATE if filter_type == 'date' else
+            SETTING_TIME if filter_type == 'time' else
+            SETTING_VENUE)
+
+
+async def filter_sport(update: Update,context: ContextTypes.DEFAULT_TYPE):
+    return await show_filter_options(update, context, 'sport')
+
+async def filter_skill(update: Update,context: ContextTypes.DEFAULT_TYPE):
+    return await show_filter_options(update, context, 'skill')
+
+async def filter_date(update: Update,context: ContextTypes.DEFAULT_TYPE):
+    return await show_filter_options(update, context, 'date')
+
+async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
+    return await show_filter_options(update, context, 'time')
+
+async def filter_venue(update: Update,context: ContextTypes.DEFAULT_TYPE):
+    return await show_filter_options(update, context, 'venue')
+
+
+async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    try:
+        parts = query.data.split('_')
+
+        if len(parts) < 4:
+            raise ValueError("Invalid callback data format")
+        
+        filter_type = parts[2]
+        filter_value = '_'.join(parts[3:]).title()
+
+
+        filters = context.user_data.setdefault('filters', {})
+        selected = filters.get(filter_type, [])
+    
+        # Ensure it is a list
+        selected = [selected] if selected and not isinstance(selected, list) else selected or []
+        
+        # Toggle selection
+        if filter_value in selected:
+            selected = [s for s in selected if s != filter_value]
+        else:
+            selected.append(filter_value)
+        
+        filters[filter_type] = selected
+
+        filter_handlers = {
+            'sport': filter_sport,
+            'skill': filter_skill,
+            'date': filter_date,
+            'time': filter_time,
+            'venue': filter_venue,
+        }
+
+        if filter_type in filter_handlers:
+            try:
+                return await filter_handlers[filter_type](update, context)
+            except telegram.error.BadRequest as e:
+                if "not modified" not in str(e):
+                    raise
+        else: 
+            raise ValueError(f"Unknow filter type: {filter_type}")
+    
     except Exception as e:
-        print(f"Firebase error: {e}")
-        await query.edit_message_text("🚨 Failed to fetch sports. Try again later.")
-        return SETTING_SPORTS
+        logging.error(f"Toggle filter error: {str(e)}")
+        await query.edit_message_text("An error occured. Please try again.")
+        return await show_filter_menu(update, "🔍 Filter games by:", context)
 
-
-async def toggle_sport(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def apply_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
-    sport = query.data.split('_')[-1]
-    filters = context.user_data.setdefault('filters', {})
-    selected = filters.get('sport', [])
-    
-    # Ensure we're working with a list
-    selected = selected if isinstance(selected, list) else [selected] if selected else []
-    
-    # Toggle selection
-    filters['sport'] = [s for s in selected if s != sport] if sport in selected else selected + [sport]
-    
-    return await filter_sport(update, context)
 
-async def apply_sport_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    # Clean the sport filter data
-    filters = context.user_data.setdefault('filters', {})
-    
-    # Handle case where no sports are selected
-    if not filters.get('sport'):
-        await query.edit_message_text("ℹ️ No sports selected - showing all available games")
-        filters['sport'] = []  # Empty list shows all sports
-    
-    # Reset pagination
-    context.user_data['page'] = 0
-    
-    # Proceed to show results
-    return await show_results(update, context)
+    try:
+        parts = query.data.split('_')
+        if len(parts) < 3:
+            raise ValueError("Invalid callback data format")
+        
+        filter_type = parts[2]
 
-async def save_filter(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    data = query.data
-    filter_key, filter_value = data.split('_')
-    context.user_data['filters'][filter_key] = filter_value
-    return await show_filter_menu(update, f"✅ {filter_key.capitalize()} filter applied")
+        context.user_data['page'] = 0
+
+        if filter_type == 'sport':
+            current_sports = context.user_data.get('filters', {}).get('sport', [])
+            if not current_sports:
+                await query.edit_message_text("ℹ️ Showing all sports - no filters applied")
+        return await show_filter_menu(update, f"✅ {filter_type.title()} filters applied", context)
+    
+    except Exception as e:
+        logging.error(f"Error apply filters: {str(e)}")
+        await query.edit_message_text("Failed to apply filters. Please try again.")
+        return await show_filter_menu (update, "🔍 Filter games by:", context)
+
 
 async def save_text_filter(update: Update, context: ContextTypes.DEFAULT_TYPE, filter_key: str, filter_value: str) -> int:
     if filter_value.lower() != '/skip':
         context.user_data['filters'][filter_key] = filter_value
-    return await show_filter_menu(update, f"✅ {filter_key.capitalize()} filter applied")
+    return await show_filter_menu(update, f"✅ {filter_key.capitalize()} filter applied", context)
 
 async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -186,17 +279,22 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if sports := filters.get('sport'):
         sports = [sports] if isinstance(sports, str) else sports
         games_ref = games_ref.where('sport', 'in', sports)
-    if 'skill' in context.user_data['filters']:
-        games_ref = games_ref.where('skill', '==', context.user_data['filters']['skill'])
+    if skills := filters.get('skill'):
+        skills = [skills] if isinstance(skills, str) else skills
+        games_ref = games_ref.where('skill', 'in', skills)
+    if dates := filters.get('date'):
+        dates = [dates] if isinstance(dates, str) else dates
+        games_ref = games_ref.where('date', 'in', dates)
+    if times := filters.get('time'):
+        times = [times] if isinstance(times, str) else times
+        games_ref = games_ref.where('time', 'in', times)
+    if venues := filters.get('venue'):
+        venues = [venues] if isinstance(venues, str) else venues
+        games_ref = games_ref.where('venue', 'in', venues)
     
     games = [doc.to_dict() for doc in games_ref.stream()]
     context.user_data['games'] = games
 
-    if 'time' in filters:
-        games = [g for g in games if filters['time'].lower() in g.get('time', '').lower()]
-    if 'venue' in filters:
-        games = [g for g in games if filters['venue'].lower() in g.get('venue', '').lower()]
-    
     if not games:
         await query.edit_message_text("❌ No matching games found. Try different filters.")
         return SETTING_SPORTS
@@ -216,6 +314,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     game_info = (
         f"🎯 <b>Matching Game #{page+1}</b>\n\n"
         f"🏅 <b>Sport:</b> {game.get('sport', 'N/A').title()}\n"
+        f"📅 <b>Date:</b> {game.get('date', 'N/A')}\n"
         f"🕒 <b>Time:</b> {game.get('time', 'N/A')}\n"
         f"📍 <b>Venue:</b> {game.get('venue', 'N/A')}\n"
         f"📊 <b>Skill:</b> {game.get('skill', 'Any').title()}\n"

@@ -80,6 +80,11 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     try:
         parts = query.data.split('_')
+        if len(parts) == 2:
+            context.user_data['filters'] = {}
+            await query.edit_message_text("✅ All filters have been cleared.")
+            return await show_filter_menu(update, "🔍 Filter games by:", context)
+        
         if len(parts) < 3:
             raise ValueError("Invalid callback data format")
         
@@ -88,16 +93,11 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         if filter_type in context.user_data.get('filters', {}):
             context.user_data['filters'][filter_type] = []
 
-        if filter_type == 'sport':
-            return await filter_sport(update, context)
-        elif filter_type == 'skill':
-            return await filter_skill(update, context)
-        elif filter_type == 'date':
-            return await filter_date(update, context)
-        elif filter_type == 'time':
-            return await filter_time(update, context)
-        elif filter_type == 'venue':
-            return await filter_venue(update, context)
+        filter_func = globals().get(f"filter_{filter_type}")
+        if filter_func:
+            return await filter_func(update, context)
+        
+        raise ValueError(f"Unknown filter type: {filter_type}")
         
     except Exception as e:
         logging.error(f"Clear filter error : {str(e)}")
@@ -407,7 +407,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not games:
         await query.edit_message_text("❌ No matching games found. Try different filters.")
-        return SETTING_SPORTS
+        return await show_filter_menu (update, "🔍 Filter games by:", context)
     
     page %= len(games)
     context.user_data['page'] = page
@@ -428,8 +428,8 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🕒 <b>Time:</b> {game.get('start_time_24', 'N/A')} - {game.get('end_time_24', 'N/A')}\n"
         f"📍 <b>Venue:</b> {game.get('venue', 'N/A')}\n"
         f"📊 <b>Skill:</b> {game.get('skill', 'Any').title()}\n"
-        f"👥 <b>Players:</b> {len(game.get('players', []))} / {game.get('max_players',10)} "
-        f"{'(🏟️ FULL)' if len(game.get('players', [])) >= game.get('max_players', 10) else '✅ OPEN'}\n\n"
+       # f"👥 <b>Players:</b> {len(game.get('players', []))} / {game.get('max_players',10)} "
+       # f"{'(🏟️ FULL)' if len(game.get('players', [])) >= game.get('max_players', 10) else '✅ OPEN'}\n\n"
         f"🔗 <b>Group:</b> {game.get('group_link', 'Not  available')}\n\n"
         f"🔎 <b>Filters applied:</b>{filters_summary}"
     )
@@ -478,19 +478,15 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return BROWSE_GAMES
     
 
-    if len(game.get('players', [])) >= game.get('max_players', 10):
-        await query.edit_message_text(" This game is already full")
-        return BROWSE_GAMES
+    #if len(game.get('players', [])) >= game.get('max_players', 10):
+    #    await query.edit_message_text(" This game is already full")
+    #    return BROWSE_GAMES
 
     game_ref = db.collection("game").document(game['id'])
     if update._effective_user.id in game.get('players_list', []):
         await query.edit_message_text("You've already joined this game")
         return BROWSE_GAMES
 
-    game_ref.update({
-        'players': firestore.Increment(1),
-        'players_list': firestore.ArrayUnion([update.effective_user.id])
-    })
 
     await query.edit_message_text(
         f"✅ You've joined the {game.get('sport')} game! \n"

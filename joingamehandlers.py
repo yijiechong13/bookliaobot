@@ -115,50 +115,59 @@ async def handle_filter_selection(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE, filter_type:str):
+
+    if filter_type == 'time':
+        return await filter_time(update, context)
+    
     query = update.callback_query
     await query.answer()
 
-    if filter_type == 'sport':
-        options = {doc.to_dict().get("sport") for doc in db.collection("game").stream()}
-        options.discard(None)
-        title = "⚽ Select sports (multiple allowed):"
-    elif filter_type == 'skill':
-        options = {doc.to_dict().get("skill") for doc in db.collection("game").stream()}
-        options.discard(None)
-        title = "📊 Select skill levels (multiple allowed):"
-    elif filter_type == 'date':
-        options = {doc.to_dict().get("date") for doc in db.collection("game").stream()}
-        options.discard(None)
-        title = "📅 Select a date:"
-    elif filter_type == 'time':
-        options = {doc.to_dict().get("time") for doc in db.collection("game").stream()}
-        options.discard(None)
-        title = "⌛ Select a time:"
-    elif filter_type == 'venue':
-        options = {doc.to_dict().get("venue") for doc in db.collection("game").stream()}
-        options.discard(None)
-        title = "📍 Pick venue/location (multiple allowed):"
+    try:
+        current_message = query.message.text
+        current_markup = query.message.reply_markup
+
+        if filter_type == 'sport':
+            options = {doc.to_dict().get("sport") for doc in db.collection("game").stream()}
+            options.discard(None)
+            title = "⚽ Select sports (multiple allowed):"
+        elif filter_type == 'skill':
+            options = {doc.to_dict().get("skill") for doc in db.collection("game").stream()}
+            options.discard(None)
+            title = "📊 Select skill levels (multiple allowed):"
+        elif filter_type == 'date':
+            options = {doc.to_dict().get("date") for doc in db.collection("game").stream()}
+            options.discard(None)
+            title = "📅 Select a date:"
+        elif filter_type == 'venue':
+            options = {doc.to_dict().get("venue") for doc in db.collection("game").stream()}
+            options.discard(None)
+            title = "📍 Pick venue/location (multiple allowed):"
+        
+        current_selection = context.user_data.get('filters', {}).get(filter_type, [])
+        current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
+
+        keyboard = [
+            [InlineKeyboardButton(
+                f"{'✅ ' if opt in current_selection else ''}{opt}",
+                callback_data=f"toggle_filter_{filter_type}_{opt.lower()}"
+            )] for opt in options
+        ]
+
+        keyboard.append([
+            InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_{filter_type}_filters"),
+            InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
+            InlineKeyboardButton("✅ Apply", callback_data=f"apply_filters_{filter_type}")
+            ])
+        
+        new_markup = InlineKeyboardMarkup(keyboard)
+
+        if current_message != title or str(current_markup) != str(new_markup):
+            await query.edit_message_text(
+                text=title,
+                reply_markup=new_markup
+            )
     
-    current_selection = context.user_data.get('filters', {}).get(filter_type, [])
-    current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
-
-    keyboard = [
-        [InlineKeyboardButton(
-            f"{'✅ ' if opt in current_selection else ''}{opt}",
-            callback_data=f"toggle_filter_{filter_type}_{opt.lower()}"
-        )] for opt in options
-    ]
-
-    keyboard.append([
-        InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_{filter_type}_filters"),
-        InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
-        InlineKeyboardButton("✅ Apply", callback_data=f"apply_filters_{filter_type}")
-        ])
-    try: 
-        await query.edit_message_text(
-            title,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+    
     except telegram.error.BadRequest as e:
         if "not modified" in str(e):
             pass
@@ -182,7 +191,59 @@ async def filter_date(update: Update,context: ContextTypes.DEFAULT_TYPE):
     return await show_filter_options(update, context, 'date')
 
 async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
-    return await show_filter_options(update, context, 'time')
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        time_slots = []
+        for hour in range(7,24):
+            for minute in [0,30]:   
+                if hour == 23 and minute == 30:
+                    continue
+            start = f"{hour:02d}:{minute:02d}"
+            end_hour = hour + (1 if minute == 30 else 0)
+            end_minute = (minute + 30) % 60
+            end = f"{end_hour % 24:02d}:{end_minute:02d}"
+            time_slot = f"{start} - {end}"
+            display_text = f"{hour}:{minute:02d}-{end_hour % 24}:{end_minute:02d}"
+            time_slots.append((time_slot, display_text))
+
+        current_selection = context.user_data.get('filters', {}).get('time', [])
+        current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
+        
+        keyboard = []
+        for i in range(0, len(time_slots), 3):
+            row = []
+            for j in range(3):
+                if i+j < len(time_slots):
+                    slot, display = time_slots[i+j]
+                    is_selected = '✅ ' if slot in current_selection else ''
+                    row.append(InlineKeyboardButton(
+                        text = f"{is_selected}{display}",
+                        callback_data= f"toggle_filter_time_{slot}"
+                    ))
+            if row:
+                keyboard.append(row)
+
+        keyboard.append([
+            InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_time_filters"),
+            InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
+            InlineKeyboardButton("✅ Apply", callback_data=f"apply_filters_time")
+            ])
+        
+        await query.edit_message_text(
+            "🕒 Select time ranges (multiple allowed):",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except telegram.error.BadRequest as e:
+        if "not modified" in str(e):
+            pass
+        else:
+            raise
+    except Exception as e:
+        logging.error(f"Time filter error: {str(e)}")
+        await query.edit_message_text("Couldnt update time selectiion. Please try again.")
+    return SETTING_TIME
 
 async def filter_venue(update: Update,context: ContextTypes.DEFAULT_TYPE):
     return await show_filter_options(update, context, 'venue')
@@ -274,25 +335,73 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     filters = context.user_data.get('filters', {})
     page = context.user_data.get('page', 0)
-    games_ref = db.collection("game")
+    games_ref = db.collection("game").where('status', '==', 'open')
+
+    if time_ranges:= filters.get('time'):
+        time_ranges = [time_ranges] if isinstance(time_ranges,str) else time_ranges
+
+
+        def time_to_minutes(t):
+            h, m = map(int, t.split(':'))
+            return h*60+m
+
+        games = []
+        for doc in games_ref.stream():
+            game_data = doc.to_dict()
+            start = game_data.get('start_time_24')
+            end = game_data.get('end_time_24')
+            
+            if not start or not end:
+                continue
+
+            g_start = time_to_minutes(start)
+            g_end = time_to_minutes(end)
+
+            for tr in time_ranges:
+                if '-' in tr:
+                    parts = tr.split('-')
+                    if len(parts[1]) <= 2:
+                        fixed_tr = f"{parts[0]}-{parts[1]}:00"
+                    else:
+                        fixed_tr = tr
+                else:
+                    continue
+
+                time_parts = fixed_tr.split('-')
+                if len(time_parts) != 2:
+                    continue
+                t_start = time_to_minutes(time_parts[0])
+                t_end = time_to_minutes(time_parts[1])
+
+                if None in (t_start, t_end):
+                    continue
+
+                if g_start <t_end and g_end >t_end:
+                    game_data.update({
+                        'id':doc.id,
+                        'time_display': f"{start}-{end}"
+                    })
+                    games.append(game_data)
+                    break
+    else: 
+        games = [{'id': doc.id, **doc.to_dict()} for doc in games_ref.stream()]
 
     if sports := filters.get('sport'):
         sports = [sports] if isinstance(sports, str) else sports
-        games_ref = games_ref.where('sport', 'in', sports)
+        games = [g for g in games if g.get('sport') in sports]
+
     if skills := filters.get('skill'):
         skills = [skills] if isinstance(skills, str) else skills
-        games_ref = games_ref.where('skill', 'in', skills)
+        games = [g for g in games if g.get('skill') in skills]
+
     if dates := filters.get('date'):
         dates = [dates] if isinstance(dates, str) else dates
-        games_ref = games_ref.where('date', 'in', dates)
-    if times := filters.get('time'):
-        times = [times] if isinstance(times, str) else times
-        games_ref = games_ref.where('time', 'in', times)
+        games = [g for g in games if g.get('date') in dates]
+
     if venues := filters.get('venue'):
         venues = [venues] if isinstance(venues, str) else venues
-        games_ref = games_ref.where('venue', 'in', venues)
-    
-    games = [doc.to_dict() for doc in games_ref.stream()]
+        games = [g for g in games if g.get('venue') in venues]
+
     context.user_data['games'] = games
 
     if not games:
@@ -315,7 +424,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 <b>Matching Game #{page+1}</b>\n\n"
         f"🏅 <b>Sport:</b> {game.get('sport', 'N/A').title()}\n"
         f"📅 <b>Date:</b> {game.get('date', 'N/A')}\n"
-        f"🕒 <b>Time:</b> {game.get('time', 'N/A')}\n"
+        f"🕒 <b>Time:</b> {game.get('start_time_24', 'N/A')} - {game.get('end_time_24', 'N/A')}\n"
         f"📍 <b>Venue:</b> {game.get('venue', 'N/A')}\n"
         f"📊 <b>Skill:</b> {game.get('skill', 'Any').title()}\n"
         f"👥 <b>Players:</b> {len(game.get('players', []))} / {game.get('max_players',10)} "

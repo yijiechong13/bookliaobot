@@ -98,6 +98,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             return await filter_time(update, context)
         elif filter_type == 'venue':
             return await filter_venue(update, context)
+        
     except Exception as e:
         logging.error(f"Clear filter error : {str(e)}")
         await query.edit_message_text("Could not clear filters. Please try again later.")
@@ -495,7 +496,7 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"✅ You've joined the {game.get('sport')} game! \n"
         f"Group: {game.get('group_link')}",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Back to Filters", callback_data="back_to_filters")]
+            [InlineKeyboardButton("🔙 Back to Filters", callback_data="back_to_filters")]
         ])
     )
-    return ConversationHandler.END
+    return BROWSE_GAMES

@@ -14,14 +14,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏟️ Host a Game", callback_data="host_game")],
         [InlineKeyboardButton("👥 Join a Game", callback_data="join_game")],
     ]
-    await update.message.reply_text(
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    welcome = (
         "🎉 Welcome to BookLiao Bot! \nNice to meet you! This bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n " \
         "You can: " \
         "\n 🏟️ Host a Game - set the sport, time, venue, and we'll help you find players " \
         "\n👥 Join a Game - browse open listings that match your schedule and interests \n\n " \
-        "Let's get started! Choose an option below:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "Let's get started! Choose an option below:"
     )
+
+    if update.message:
+        await update.message.reply_text(
+            text=welcome,
+            reply_markup=reply_markup
+        )
+
+    elif update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=welcome,
+            reply_markup=reply_markup
+        )
+    else:
+        chat_id = update.effective_chat.id
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=welcome,
+            reply_markup=reply_markup
+        )
+
 
 
 async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):

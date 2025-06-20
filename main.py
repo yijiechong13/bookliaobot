@@ -13,6 +13,7 @@ from firebase_init import db
 
 def main():
     application = Application.builder().token(TOKEN).build()
+    application.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     
     host_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(host_game, pattern="^host_game$")],

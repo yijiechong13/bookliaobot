@@ -476,15 +476,16 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text("Invalid game selected")
         return BROWSE_GAMES
     
-    if update._effective_user.id in game.get('players_list', []):
-        await query.edit_message_text("You've already joined this game")
-        return BROWSE_GAMES
-    
+
     if len(game.get('players', [])) >= game.get('max_players', 10):
         await query.edit_message_text(" This game is already full")
         return BROWSE_GAMES
 
     game_ref = db.collection("game").document(game['id'])
+    if update._effective_user.id in game.get('players_list', []):
+        await query.edit_message_text("You've already joined this game")
+        return BROWSE_GAMES
+
     game_ref.update({
         'players': firestore.Increment(1),
         'players_list': firestore.ArrayUnion([update.effective_user.id])

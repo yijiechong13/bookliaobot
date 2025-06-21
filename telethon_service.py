@@ -1,7 +1,8 @@
 import os
 from telethon import TelegramClient
 from telethon.tl.functions.messages import ExportChatInviteRequest
-from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest
+from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest
+from telethon.tl.types import ChatAdminRights
 from dotenv import load_dotenv
 import logging
 
@@ -12,7 +13,7 @@ class TelethonService:
         self.api_id = int(os.getenv("TELEGRAM_API_ID"))
         self.api_hash = os.getenv("TELEGRAM_API_HASH")
         self.phone_number = os.getenv("TELEGRAM_PHONE_NUMBER")
-        self.bot_username = os.getenv("BOT_USERNAME", "BookLiaoBot")
+        self.bot_username = os.getenv("BOT_USERNAME", "BookaCourt_bot")
         self.bot_token = os.getenv("BOT_TOKEN")
         self.client = None
         self.initialized = False
@@ -60,13 +61,35 @@ class TelethonService:
             ))
             
             group_entity = result.chats[0]
-            group_id = group_entity.id 
+            group_id = group_entity.id
 
             # Add bot to group
             bot_entity = await self.client.get_entity(self.bot_username)
             await self.client(InviteToChannelRequest(
                 channel=group_entity,
                 users=[bot_entity]
+            ))
+
+            admin_rights = ChatAdminRights(
+            change_info=False,           # Can't change group info
+            post_messages=True,          # Can send messages (essential!)
+            edit_messages=False,         # Can't edit messages
+            delete_messages=True,        # Can delete messages (useful for moderation)
+            ban_users=False,             # Can't ban users
+            invite_users=False,          # Can't invite users
+            pin_messages=True,           # Can pin messages (useful for important announcements)
+            add_admins=False,            # Can't add other admins
+            anonymous=False,             # Not anonymous
+            manage_call=False,           # Can't manage voice calls
+            other=False                  # No other special permissions
+        )
+        
+            # Make bot an admin
+            await self.client(EditAdminRequest(
+                channel=group_entity,
+                user_id=bot_entity,
+                admin_rights=admin_rights,
+                rank="Bot"  
             ))
             
             # Generate invite link

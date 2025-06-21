@@ -12,10 +12,11 @@ async def view_hosted_games(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    
     db = context.bot_data['db']
     
     user_id = update.effective_user.id
-    games = await db.get_hosted_games(user_id)
+    games = await db.get_hosted_games(context, user_id)
     
     if not games:
         await query.edit_message_text(
@@ -44,6 +45,7 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"📋 Your Game Listing ({current_index + 1}/{len(games)}):\n\n"
         f"🏀 Sport: {game['sport']}\n"
+        f"📅 Date: {game['date']}\n"
         f"🕒 Time: {game['time_display']}\n"
         f"📍 Venue: {game['venue']}\n"
         f"📊 Skill: {game['skill'].title()}\n"

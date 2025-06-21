@@ -10,6 +10,8 @@ from savegame import GameDatabase
 from telethon_service import telethon_service
 import asyncio
 from datetime import timedelta
+from reminder import ReminderService
+import traceback
 
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
@@ -41,6 +43,13 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    #for errors that are not in the try-except block 
+    error = context.error
+    error_traceback = "".join(traceback.format_tb(error.__traceback__)) if error else "No traceback"
+    
+    print(f"❌ Error: {type(error).__name__}: {error}")
+    print(f"📋 Traceback:\n{error_traceback}")
+    
     if update.callback_query:
         await update.callback_query.message.reply_text(
             "⚠️ An error occurred. Please try again or /start"
@@ -52,36 +61,75 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
 async def cleanup_expired_games(context):
     try:
+        print("🧹 Running cleanup job...")
         db = context.bot_data['db']
         expired_count = await db.close_expired_games(context) 
         if expired_count > 0: 
-            print(f"Closed {expired_count} expired games")
+            print(f"✅ Cleanup completed: closed {expired_count} expired games")
         else: 
-            print("No expired games found")
+            print("📋 Cleanup completed: no expired games found")
     except Exception as e:
-        print (f"Error in cleanup job: {e}") 
+        print(f"❌ Error in cleanup job: {e}") 
+
+async def send_reminder(context):
+    try:
+        print("⏰ Running reminder check...")
+        reminder_service = context.bot_data['reminder_service']
+        await reminder_service.send_game_reminders(context)
+        print("✅ Reminder check completed")
+    except Exception as e:
+        print(f"❌ Error in reminder job: {e}")
 
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
+    if not TOKEN:
+        print("❌ BOT_TOKEN not found in environment variables")
+        return
+        
     application = Application.builder().token(TOKEN).build()
 
-    db = GameDatabase()   
-    application.bot_data['db'] = db
+    # Initialize database and services
+    try:
+        db = GameDatabase()   
+        application.bot_data['db'] = db
+
+        reminder = ReminderService(db)
+        application.bot_data['reminder_service'] = reminder 
+        print("✅ Database and reminder service initialized")
+    except Exception as e:
+        print(f"❌ Error initializing services: {e}")
+        return
 
     job_queue = application.job_queue
     
-    #Run cleanup every hour
+    # Run cleanup every hour
     job_queue.run_repeating(
         cleanup_expired_games,
-        interval = timedelta(hours=1),
-        first = 5
+        interval=timedelta(hours=1),
+        first=10  # Start after 10 seconds
     )
 
+    # Run reminder check every 30 minutes (fixed from 1 minute)
+    job_queue.run_repeating(
+        send_reminder, 
+        interval=timedelta(minutes=30),
+        first=15  # Start after 15 seconds
+    )
+
+    print("✅ Scheduled jobs configured")
+
     async def init_telethon():
-        await telethon_service.initialize()
+        try:
+            await telethon_service.initialize()
+            print("✅ Telethon service initialized")
+        except Exception as e:
+            print(f"❌ Error initializing Telethon: {e}")
     
-     # Run initialization
-    asyncio.get_event_loop().run_until_complete(init_telethon())
+    # Run initialization
+    try:
+        asyncio.get_event_loop().run_until_complete(init_telethon())
+    except Exception as e:
+        print(f"❌ Error during initialization: {e}")
 
     host_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(host_game, pattern="^host_game$")],
@@ -111,24 +159,24 @@ def main():
             ]
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
-        conversation_timeout = 300, 
-        allow_reentry = True, per_chat = True
+        conversation_timeout=300, 
+        allow_reentry=True, per_chat=True
     )
-
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cancel', cancel))
+    application.add_handler(host_conv)
+    application.add_error_handler(error_handler)
     
 
-    application.add_handler(host_conv)
-
-    application.add_error_handler(error_handler)
-
-    print("Bot is starting...") 
-    application.run_polling(
-    poll_interval=1,
-    drop_pending_updates=True
-)   
+    print("🚀 Bot is starting...") 
+    try:
+        application.run_polling(
+            poll_interval=1,
+            drop_pending_updates=True
+        )   
+    except Exception as e:
+        print(f"❌ Error running bot: {e}")
 
 if __name__ == "__main__":
     main()

@@ -1,20 +1,20 @@
 ##import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, JobQueue
 from mainhandlers import *
-from hosthandlers import *
-from joingamehandlers import *
+from host.hosthandlers import *
+from member.joingamehandlers import *
 from config import * 
 from dotenv import load_dotenv
 import os
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
-from firebase_init import db
+from member.firebase_init import db
 
 def main():
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
-    
+
     host_conv = ConversationHandler (
         entry_points=[CallbackQueryHandler(host_game, pattern="^host_game$")],
         states= {

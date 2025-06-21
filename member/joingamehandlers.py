@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           MessageHandler, filters,
                           ContextTypes, ConversationHandler)
-from utils import *
+from host.utils import *
 from config import *
 from typing import Optional
 
@@ -12,7 +12,7 @@ import logging
 import telegram
 load_dotenv()
 FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
-from firebase_init import *
+from member.firebase_init import *
 
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

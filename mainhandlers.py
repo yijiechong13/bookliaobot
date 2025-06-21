@@ -1,8 +1,8 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from savegame import GameDatabase
-from utils import *
-from hosthandlers import *
+from host.utils import *
+from host.hosthandlers import *
 
 db = GameDatabase()
 

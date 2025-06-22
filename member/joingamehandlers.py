@@ -27,8 +27,8 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     filters = {}
     if pref_doc.exists:
         pref_data = pref_doc.to_dict()
-        if 'sports' in pref_data:
-            filters['sport'] = pref_data['sports']
+        if 'sport' in pref_data:
+            filters['sport'] = pref_data['sport']
         if 'skill' in pref_data:
             filters['skill'] = pref_data['skill']
         if 'venue' in pref_data:
@@ -44,13 +44,14 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         filters = context.user_data.get('filters', {})
+        val = lambda v: v and (not isinstance(v, (list, dict, str)) or bool(v))
 
         buttons = [
-            [f"⚽ Sports {'✅' if 'sport' in filters else ''}", "filter_sport"],
-            [f"📅 Date {'✅' if 'date' in filters else ''}", "filter_date"],
-            [f"🕒 Time {'✅' if 'time' in filters else ''}", "filter_time"],
-            [f"📍 Venue {'✅' if 'venue' in filters else ''}", "filter_venue"],
-            [f"📊 Skill {'✅' if 'skill' in filters else ''}", "filter_skill"],
+            [f"⚽ Sports {'✅' if val(filters.get('sport')) else ''}", "filter_sport"],
+            [f"📅 Date {'✅' if val(filters.get('date')) else ''}", "filter_date"],
+            [f"🕒 Time {'✅' if val(filters.get('time')) else ''}", "filter_time"],
+            [f"📍 Venue {'✅' if val(filters.get('venue')) else ''}", "filter_venue"],
+            [f"📊 Skill {'✅' if val(filters.get('skill')) else ''}", "filter_skill"],
             ["🔍 Show Results", "show_results"],
         ]
 
@@ -110,7 +111,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         filter_type = parts[1]
         firestore_field = {
-            'sport': 'sports',
+            'sport': 'sport',
             'skill': 'skill',
             'venue': 'venue'
         }.get(filter_type)
@@ -371,7 +372,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_pref_ref = db.collection("user_preference").document(user_id)
 
     pref_data = {
-        'sports': filters.get('sport'),
+        'sport': filters.get('sport'),
         'skill': filters.get('skill'),
         'venue': filters.get('venue'),
         'updated_at': datetime.datetime.now()
@@ -433,9 +434,9 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else: 
         games = [{'id': doc.id, **doc.to_dict()} for doc in games_ref.stream()]
 
-    if sports := filters.get('sport'):
-        sports = [sports] if isinstance(sports, str) else sports
-        games = [g for g in games if g.get('sport') in sports]
+    if sport := filters.get('sport'):
+        sport = [sport] if isinstance(sport, str) else sport
+        games = [g for g in games if g.get('sport') in sport]
 
     if skills := filters.get('skill'):
         skills = [skills] if isinstance(skills, str) else skills

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 import os
 import logging
 import telegram
+import datetime
 load_dotenv()
 FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS")
 from member.firebase_init import *
@@ -19,8 +20,22 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     context.user_data.clear()
+
+    user_id = str(update.effective_user.id)
+    pref_doc = db.collection("user_preference").document(user_id).get()
+    
+    filters = {}
+    if pref_doc.exists:
+        pref_data = pref_doc.to_dict()
+        if 'sports' in pref_data:
+            filters['sport'] = pref_data['sports']
+        if 'skill' in pref_data:
+            filters['skill'] = pref_data['skill']
+        if 'venue' in pref_data:
+            filters['venue'] = pref_data['venue']
+
     context.user_data.update({
-        'filters' : {},
+        'filters' : filters,
         'page' : 0,
         'games' : []
     })
@@ -80,8 +95,13 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     try:
         parts = query.data.split('_')
+        user_id = str(update.effective_user.id)
+        user_pref_ref = db.collection("user_preference").document(user_id)
+
         if len(parts) == 2:
             context.user_data['filters'] = {}
+            user_pref_ref.delete()
+
             await query.edit_message_text("✅ All filters have been cleared.")
             return await show_filter_menu(update, "🔍 Filter games by:", context)
         
@@ -89,9 +109,20 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             raise ValueError("Invalid callback data format")
         
         filter_type = parts[1]
+        firestore_field = {
+            'sport': 'sports',
+            'skill': 'skill',
+            'venue': 'venue'
+        }.get(filter_type)
 
         if filter_type in context.user_data.get('filters', {}):
             context.user_data['filters'][filter_type] = []
+        
+        if firestore_field:
+            user_pref_ref.update({
+                firestore_field: firestore.DELETE_FIELD,
+                'updated_at': datetime.datetime.now()
+            })
 
         filter_func = globals().get(f"filter_{filter_type}")
         if filter_func:
@@ -335,6 +366,21 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     filters = context.user_data.get('filters', {})
+
+    user_id = str(update.effective_user.id)
+    user_pref_ref = db.collection("user_preference").document(user_id)
+
+    pref_data = {
+        'sports': filters.get('sport'),
+        'skill': filters.get('skill'),
+        'venue': filters.get('venue'),
+        'updated_at': datetime.datetime.now()
+
+    }
+
+    user_pref_ref.set(pref_data, merge=True)
+
+
     page = context.user_data.get('page', 0)
     games_ref = db.collection("game").where('status', '==', 'open')
 

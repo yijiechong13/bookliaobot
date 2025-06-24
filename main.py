@@ -1,7 +1,5 @@
-import os
-from dotenv import load_dotenv
 ##import logging
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, JobQueue
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ChatMemberHandler
 from createagame import *
 from hostedgames import *  
 from warnings import filterwarnings
@@ -12,28 +10,60 @@ import asyncio
 from datetime import timedelta
 from reminder import ReminderService
 import traceback
-
+from countmembers import handle_member_update
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
+
+from joingamehandlers import *
+from config import * 
+from dotenv import load_dotenv
+import os
 load_dotenv()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-        context.user_data.clear() 
+    context.user_data.clear() 
 
-        keyboard = [
-            [InlineKeyboardButton("🏟️ Host a Game", callback_data="host_game")],
-            [InlineKeyboardButton("👥 Join a Game", callback_data="join_game")],
-        ]
+    keyboard = [
+        [InlineKeyboardButton("🏟️ Host a Game", callback_data="host_game")],
+        [InlineKeyboardButton("👥 Join a Game", callback_data="join_game")],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    welcome = (
+        "🎉 Welcome to BookLiao Bot! \nThis bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n " \
+            "Here's how it works:\n"
+            "📢 Browse games in @BookLiaoAnnouncementChannel and join via the group links.\n\n"
+            "You can also:\n"
+            "🏟️ *Host a Game* — Pick a sport, time, venue & skill level for others to join.\n"
+            "👥 *Join a Game* — Filter games by your preferences and save them for next time.\n\n"
+            "Let’s get started! Choose an option below:"
+    )
+
+    if update.message:
         await update.message.reply_text(
-            "🎉 Welcome to BookLiao Bot! \nNice to meet you! This bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n " \
-            "You can: " 
-            "\n 🏟️ Host a Game - set the sport, time, venue, and we'll help you find players " \
-            "\n👥 Join a Game - browse open listings that match your schedule and interests \n\n " \
-            "Let's get started! Choose an option below:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            text=welcome,
+            reply_markup=reply_markup, 
+            parse_mode = 'Markdown'
         )
-    
+
+    elif update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=welcome,
+            reply_markup=reply_markup,
+            parse_mode = 'Markdown'
+        )
+    else:
+        chat_id = update.effective_chat.id
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=welcome,
+            reply_markup=reply_markup,
+            parse_mode = 'Markdown'
+        )
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data.clear() 
@@ -159,13 +189,63 @@ def main():
             ]
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
-        conversation_timeout=300, 
-        allow_reentry=True, per_chat=True
+        conversation_timeout = 300, 
+        allow_reentry = True, 
+    )
+
+    join_conv = ConversationHandler (
+        entry_points=[CallbackQueryHandler(join_game, pattern="^join_game$")],
+        states= {
+            SETTING_FILTERS: [
+                CallbackQueryHandler(handle_filter_selection,pattern="^filter_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),
+                CallbackQueryHandler(show_results,pattern="^show_results$"),],
+            SETTING_SPORTS: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_sport_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_sport_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_sport$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_SKILL: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_skill_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_skill_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_skill$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_DATE: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_date_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_date_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_date$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_TIME: [
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_time_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_time_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_time$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            SETTING_VENUE:[
+                CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_venue_"),
+                CallbackQueryHandler(clear_filters,pattern="^clear_venue_filters$"),
+                CallbackQueryHandler(apply_filters,pattern="^apply_filters_venue$"),
+                CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),],
+            BROWSE_GAMES: [CallbackQueryHandler(handle_navigation, pattern="^(prev_game|next_game)$"),
+                           CallbackQueryHandler(join_selected_game, pattern="^join_selected_"),
+                           CallbackQueryHandler(back_to_filters, pattern="^back_to_filters$")]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        per_message = False,
+        conversation_timeout = 300, 
+        allow_reentry = True, 
     )
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cancel', cancel))
+
     application.add_handler(host_conv)
+    application.add_handler(join_conv)
+
+    # Add chat member handler for tracking joins/leaves
+    application.add_handler(ChatMemberHandler(handle_member_update, ChatMemberHandler.CHAT_MEMBER))
+
+
     application.add_error_handler(error_handler)
     
 

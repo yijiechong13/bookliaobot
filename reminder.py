@@ -28,9 +28,14 @@ class ReminderService:
                 #Calculate time difference 
                 time_until_game = game_datetime - now 
 
-                #Check if need send reminders
+                #Check if need send 24h eminders
                 if await self._should_send_24h_reminder(game_data, time_until_game, game_id):
                     await self.send_24h_reminder(context, game_data, game_id)
+                    reminder_count += 1
+
+                #Check if need send 2h reminder
+                if await self._should_send_2h_reminder(game_data, time_until_game, game_id):
+                    await self.send_2h_reminder(context, game_data, game_id)
                     reminder_count += 1
 
             if reminder_count > 0:
@@ -66,10 +71,22 @@ class ReminderService:
     async def _should_send_24h_reminder(self, game_data, time_until_game, game_id):
         
         try:
-            # Check if we're within 24-25 hours before the game
+            # Check if we're within 23-25 hours before the game
             if timedelta(hours=23) <= time_until_game <= timedelta(hours=26):
                 # Check if reminder hasn't been sent yet
                 reminder_sent = game_data.get('reminder_24h_sent', False)
+                return not reminder_sent
+            return False
+        except Exception:
+            return False
+        
+    async def _should_send_2h_reminder(self, game_data, time_until_game, game_id):
+        
+        try:
+            # Check if we're within 1.5-2.5 hours before the game
+            if timedelta(hours=1.5) <= time_until_game <= timedelta(hours=2.5):
+                # Check if reminder hasn't been sent yet
+                reminder_sent = game_data.get('reminder_2h_sent', False)
                 return not reminder_sent
             return False
         except Exception:
@@ -84,39 +101,12 @@ class ReminderService:
                 return
 
             try:
+                #supergroup starts with 100 
                 chat_id = f"-100{abs(int(group_id))}"
             except (ValueError, TypeError) as e:
                 print(f"❌ Invalid group_id format: {group_id} - {e}")
                 return
 
-
-            # First verify bot has access
-            try:
-                chat = await context.bot.get_chat(chat_id)
-                print(f"✅ Chat verified: {chat.title} (ID: {chat.id})")
-                
-                # Additional check - get chat member status
-                try:
-                    me = await context.bot.get_me()
-                    member = await context.bot.get_chat_member(chat_id, me.id)
-                    print(f"🤖 Bot status in group: {member.status}")
-                    if member.status not in ['administrator', 'member']:
-                        print("❌ Bot doesn't have send permissions")
-                        return
-                except Exception as e:
-                    print(f"❌ Couldn't verify bot membership: {e}")
-                    return
-                    
-            except Exception as e:
-                print(f"❌ Failed to access chat: {e}")
-                
-                # Special handling for different error types
-                if "Chat not found" in str(e):
-                    print("💡 Solution: The group might be deleted or bot was removed")
-                elif "not enough rights" in str(e).lower():
-                    print("💡 Solution: Bot needs admin privileges in the group")
-                return
-            
             # Create reminder message
             reminder_text = (
                 f"⏰ **24-Hour Game Reminder!** ⏰\n\n"
@@ -128,7 +118,6 @@ class ReminderService:
                 f"See you tomorrow! 🎉"
             )
             
-            # Send message to group
             await context.bot.send_message(
                 chat_id=chat_id,  
                 text=reminder_text,
@@ -141,3 +130,42 @@ class ReminderService:
         
         except Exception as e:
             print(f"🚨 Unexpected error sending 24h reminder: {e}")
+
+    async def send_2h_reminder(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id):
+        try:
+            
+            group_id = game_data.get('group_id')
+            if not group_id:
+                print("❌ No group_id in game data")
+                return
+
+            try:
+                
+                chat_id = f"-100{abs(int(group_id))}"
+            except (ValueError, TypeError) as e:
+                print(f"❌ Invalid group_id format: {group_id} - {e}")
+                return
+
+           
+            reminder_text = (
+                f"🚨 **2-Hour Game Alert!** 🚨\n\n"
+                f"🏀 **{game_data['sport']}** game starts in **2 hours**!\n\n"
+                f"📅 **Today:** {game_data['date']}\n"
+                f"🕒 **Time:** {game_data['time_display']}\n"
+                f"📍 **Venue:** {game_data['venue']}\n"
+                f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
+                f"Time to get ready! 🏃‍♂️💨"
+            )
+            
+            await context.bot.send_message(
+                chat_id=chat_id,  
+                text=reminder_text,
+                parse_mode='Markdown'
+            )
+
+            
+            self.db.update_game(game_id, {"reminder_2h_sent": True})
+            print(f"✅ Sent 2h reminder for game {game_id} to group {chat_id}")
+        
+        except Exception as e:
+            print(f"🚨 Unexpected error sending 2h reminder: {e}")

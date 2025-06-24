@@ -1,9 +1,30 @@
+#Conversation states - Hosting Flow
+(
+    HOST_MENU,
+    ASK_BOOKING, 
+    WAITING_BOOKING_CONFIRM, 
+    SPORT, 
+    DATE, 
+    TIME, 
+    VENUE,
+    SKILL, 
+    CONFIRMATION, 
+    VIEW_HOSTED_GAMES, 
+    CONFIRM_CANCEL
+) = range(11)
 
-#Conversation states for hosting game
-ASK_BOOKING, WAITING_BOOKING_CONFIRM, WAITING_FOR_GROUP_LINK,GET_GROUP_LINK, RECEIVED_GROUP_LINK, SPORT, DATE, TIME, VENUE, SKILL, CONFIRMATION = range(11)
 
-HOST_MENU= 20 
+#Conversation states for joining games and preference 
+(
+    SETTING_FILTERS,
+    SETTING_SPORTS, 
+    SETTING_SKILL, 
+    SETTING_DATE,
+    SETTING_TIME,
+    SETTING_VENUE,
+    BROWSE_GAMES, 
+)= range(11, 18)
 
-# Conversation states for viewing/cancelling games
-VIEW_HOSTED_GAMES = 21
-CONFIRM_CANCEL =  22 
+
+#To Check ! 
+RESULTS_PER_PAGE = 5

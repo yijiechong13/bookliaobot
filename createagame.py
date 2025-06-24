@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from utils import *
-from config import *
+from utils import validate_date_format, parse_time_input
 from telethon_service import telethon_service
+from config import *
 
 load_dotenv() 
 
@@ -248,6 +248,8 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ])
                 )
                 return CONFIRMATION
+            
+        initial_player_count = 1 #Host is the first player    
         
         game_doc_data = {
             "sport": game_data["sport"],
@@ -261,7 +263,8 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "host": update.effective_user.id,
             "status": "open",
             "group_id": game_data.get("group_id"), 
-            "reminder_24h_sent": False 
+            "reminder_24h_sent": False,
+            "player_count": initial_player_count
         }
         
         game_id = db.save_game(game_doc_data)
@@ -272,7 +275,9 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "time_display": game_data["time_display"],  
             "venue": game_data["venue"],
             "skill": game_data["skill"],
-            "group_link": game_data["group_link"]
+            "group_link": game_data["group_link"],
+            "player_count": initial_player_count,
+            "host_username": update.effective_user.username
         }
 
         announcement_msg = await post_announcement(context, announcement_data, update.effective_user)
@@ -313,6 +318,7 @@ async def post_announcement(context, game_data, user):
         f"🕒 Time: {game_data['time_display']}\n"
         f"📍 Venue: {game_data['venue']}\n"
         f"📊 Skill Level: {game_data['skill'].title()}\n"
+        f"👥 Players: {game_data.get('player_count', 1)}\n"
         f"👤 Host: @{user.username or 'Anonymous'}\n\n"
         f"🔗 Join Group: {game_data['group_link']}"
     )

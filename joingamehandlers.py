@@ -10,7 +10,10 @@ import datetime
 
 load_dotenv()
 
-db = None
+db = context.bot_data['db']
+parts = query.data.split('_')
+user_id = str(update.effective_user.id)
+user_pref_ref = db.db.collection("user_preference").document(user_id)
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     global db

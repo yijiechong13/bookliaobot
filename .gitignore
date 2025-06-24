@@ -1,3 +1,5 @@
 venv/
 .env
 .firebasekey.json
+
+__pycache__/ 

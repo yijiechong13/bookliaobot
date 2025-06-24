@@ -1,4 +1,3 @@
-
 import os
 from telegram import Update, ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes

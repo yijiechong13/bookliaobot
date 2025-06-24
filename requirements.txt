@@ -1,0 +1,5 @@
+firebase_admin==6.9.0
+python-dotenv==1.1.1
+python-telegram-bot==22.1
+pytz==2025.2
+Telethon==1.40.0

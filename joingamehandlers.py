@@ -13,7 +13,7 @@ load_dotenv()
 db = None
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    global db
+    db = context.bot_data['db']
     if db is None:
         db = context.bot_data['db']  
 
@@ -63,7 +63,7 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
 
         keyboard.append([
             InlineKeyboardButton("🧹 Clear Filters", callback_data="clear_filters"),
-            InlineKeyboardButton("🔙 Back", callback_data="main_menu"),
+            InlineKeyboardButton("🔙 Back", callback_data="start"),
             ])
         
         #Filters summary
@@ -95,6 +95,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await query.answer()
 
     try:
+        db = context.bot_data['db']
         parts = query.data.split('_')
         user_id = str(update.effective_user.id)
         user_pref_ref = db.collection("user_preference").document(user_id)
@@ -232,16 +233,16 @@ async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
     try:
         time_slots = []
         for hour in range(7,24):
-            for minute in [0,30]:   
+            for minute in [0,30]:
                 if hour == 23 and minute == 30:
                     continue
-            start = f"{hour:02d}:{minute:02d}"
-            end_hour = hour + (1 if minute == 30 else 0)
-            end_minute = (minute + 30) % 60
-            end = f"{end_hour % 24:02d}:{end_minute:02d}"
-            time_slot = f"{start} - {end}"
-            display_text = f"{hour}:{minute:02d}-{end_hour % 24}:{end_minute:02d}"
-            time_slots.append((time_slot, display_text))
+                start = f"{hour:02d}:{minute:02d}"
+                end_hour = hour + (1 if minute == 30 else 0)
+                end_minute = (minute + 30) % 60
+                end = f"{end_hour % 24:02d}:{end_minute:02d}"
+                time_slot = f"{start} - {end}"
+                display_text = f"{hour}:{minute:02d}-{end_hour % 24}:{end_minute:02d}"
+                time_slots.append((time_slot, display_text))
 
         current_selection = context.user_data.get('filters', {}).get('time', [])
         current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
@@ -548,3 +549,4 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ])
     )
     return BROWSE_GAMES
+

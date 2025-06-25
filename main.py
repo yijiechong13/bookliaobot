@@ -66,8 +66,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data.clear() 
+    reply = "Cancelled. Use /start to begin again"
 
-    await update.message.reply_text("Cancelled. Use /start to begin again")
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(reply)
+    else:
+        await update.effective_message.reply_text(reply)
     return ConversationHandler.END
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -237,6 +242,7 @@ def main():
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cancel', cancel))
+    application.add_handler(CallbackQueryHandler(start, pattern="^start$"))
 
     application.add_handler(host_conv)
     application.add_handler(join_conv)

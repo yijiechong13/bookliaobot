@@ -109,6 +109,7 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=context.user_data["booking_chat_id"],
                 message_id=context.user_data["booking_msg_id"]
             )
+            await query.message.delete()
         except Exception as e:
             print(f"Couldn't delete message: {e}")
     
@@ -120,7 +121,7 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
         sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
         keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
 
-        await update.message.reply_text(
+        await query.message.reply_text(
             "Which sport are you hosting?",
             reply_markup = InlineKeyboardMarkup(keyboard))
         return SPORT

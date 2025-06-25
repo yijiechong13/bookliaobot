@@ -62,7 +62,7 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
 
 
         keyboard.append([
-            InlineKeyboardButton("🧹 Clear Filters", callback_data="clear_filters"),
+            InlineKeyboardButton("🧹 Clear All Filters", callback_data="clear_filters"),
             InlineKeyboardButton("🔙 Back", callback_data="start"),
             ])
         
@@ -98,7 +98,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         db = context.bot_data['db']
         parts = query.data.split('_')
         user_id = str(update.effective_user.id)
-        user_pref_ref = db.collection("user_preference").document(user_id)
+        user_pref_ref = db.db.collection("user_preference").document(user_id)
 
         if len(parts) == 2:
             context.user_data['filters'] = {}
@@ -121,10 +121,12 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             context.user_data['filters'][filter_type] = []
         
         if firestore_field:
-            user_pref_ref.update({
-                firestore_field: firestore.DELETE_FIELD,
-                'updated_at': datetime.datetime.now()
-            })
+            doc = user_pref_ref.get()
+            if doc.exists:
+                user_pref_ref.update({
+                    firestore_field: firestore.DELETE_FIELD,
+                    'updated_at': datetime.datetime.now()
+                })
 
         filter_func = globals().get(f"filter_{filter_type}")
         if filter_func:
@@ -340,18 +342,19 @@ async def apply_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     try:
-        parts = query.data.split('_')
-        if len(parts) < 3:
-            raise ValueError("Invalid callback data format")
-        
-        filter_type = parts[2]
-
+        filter_type = query.data.split('_')[2]
         context.user_data['page'] = 0
 
-        if filter_type == 'sport':
-            current_sports = context.user_data.get('filters', {}).get('sport', [])
-            if not current_sports:
-                await query.edit_message_text("ℹ️ Showing all sports - no filters applied")
+        if not context.user_data.get('filters', {}).get(filter_type):
+            msgs = {
+                'sport': "⚽ All sports",
+                'skill': "📊 All skills",
+                'date': "📅 All dates",
+                'time': "🕒 All times",
+                'venue': "📍 All venues"
+            }
+            await query.edit_message_text(f"ℹ️ Showing {msgs.get(filter_type, 'all')} - no filters applied")
+        
         return await show_filter_menu(update, f"✅ {filter_type.title()} filters applied", context)
     
     except Exception as e:

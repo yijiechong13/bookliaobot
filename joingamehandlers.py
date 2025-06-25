@@ -10,13 +10,10 @@ import datetime
 
 load_dotenv()
 
-db = context.bot_data['db']
-parts = query.data.split('_')
-user_id = str(update.effective_user.id)
-user_pref_ref = db.db.collection("user_preference").document(user_id)
+db = None
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    global db
+    db = context.bot_data['db']
     if db is None:
         db = context.bot_data['db']  
 
@@ -66,7 +63,7 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
 
         keyboard.append([
             InlineKeyboardButton("🧹 Clear Filters", callback_data="clear_filters"),
-            InlineKeyboardButton("🔙 Back", callback_data="main_menu"),
+            InlineKeyboardButton("🔙 Back", callback_data="start"),
             ])
         
         #Filters summary
@@ -98,6 +95,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await query.answer()
 
     try:
+        db = context.bot_data['db']
         parts = query.data.split('_')
         user_id = str(update.effective_user.id)
         user_pref_ref = db.collection("user_preference").document(user_id)
@@ -162,20 +160,22 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
         current_message = query.message.text
         current_markup = query.message.reply_markup
 
+        games_ref = context.bot_data['db'].db.collection("game").where('status', '==','open')
+        
         if filter_type == 'sport':
-            options = {doc.to_dict().get("sport") for doc in db.collection("game").stream()}
+            options = {doc.to_dict().get("sport") for doc in games_ref.stream()}
             options.discard(None)
             title = "⚽ Select sports (multiple allowed):"
         elif filter_type == 'skill':
-            options = {doc.to_dict().get("skill") for doc in db.collection("game").stream()}
+            options = {doc.to_dict().get("skill") for doc in games_ref.stream()}
             options.discard(None)
             title = "📊 Select skill levels (multiple allowed):"
         elif filter_type == 'date':
-            options = {doc.to_dict().get("date") for doc in db.collection("game").stream()}
+            options = {doc.to_dict().get("date") for doc in games_ref.stream()}
             options.discard(None)
             title = "📅 Select a date:"
         elif filter_type == 'venue':
-            options = {doc.to_dict().get("venue") for doc in db.collection("game").stream()}
+            options = {doc.to_dict().get("venue") for doc in games_ref.stream()}
             options.discard(None)
             title = "📍 Pick venue/location (multiple allowed):"
         
@@ -233,16 +233,16 @@ async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
     try:
         time_slots = []
         for hour in range(7,24):
-            for minute in [0,30]:   
+            for minute in [0,30]:
                 if hour == 23 and minute == 30:
                     continue
-            start = f"{hour:02d}:{minute:02d}"
-            end_hour = hour + (1 if minute == 30 else 0)
-            end_minute = (minute + 30) % 60
-            end = f"{end_hour % 24:02d}:{end_minute:02d}"
-            time_slot = f"{start} - {end}"
-            display_text = f"{hour}:{minute:02d}-{end_hour % 24}:{end_minute:02d}"
-            time_slots.append((time_slot, display_text))
+                start = f"{hour:02d}:{minute:02d}"
+                end_hour = hour + (1 if minute == 30 else 0)
+                end_minute = (minute + 30) % 60
+                end = f"{end_hour % 24:02d}:{end_minute:02d}"
+                time_slot = f"{start} - {end}"
+                display_text = f"{hour}:{minute:02d}-{end_hour % 24}:{end_minute:02d}"
+                time_slots.append((time_slot, display_text))
 
         current_selection = context.user_data.get('filters', {}).get('time', [])
         current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
@@ -369,10 +369,11 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    db = context.bot_data['db']
     filters = context.user_data.get('filters', {})
 
     user_id = str(update.effective_user.id)
-    user_pref_ref = db.collection("user_preference").document(user_id)
+    user_pref_ref = db.db.collection("user_preference").document(user_id)
 
     pref_data = {
         'sport': filters.get('sport'),
@@ -386,7 +387,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     page = context.user_data.get('page', 0)
-    games_ref = db.collection("game").where('status', '==', 'open')
+    games_ref = db.db.collection("game").where('status', '==', 'open')
 
     if time_ranges:= filters.get('time'):
         time_ranges = [time_ranges] if isinstance(time_ranges,str) else time_ranges
@@ -427,7 +428,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if None in (t_start, t_end):
                     continue
 
-                if g_start <t_end and g_end >t_end:
+                if g_start <t_end and g_end >t_start:
                     game_data.update({
                         'id':doc.id,
                         'time_display': f"{start}-{end}"
@@ -522,6 +523,7 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     game = context.user_data.get('current_game', {})
+    db = context.bot_data['db']
 
     if not game.get('id'):
         await query.edit_message_text("Invalid game selected")
@@ -532,14 +534,15 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     #    await query.edit_message_text(" This game is already full")
     #    return BROWSE_GAMES
 
-    game_ref = db.collection("game").document(game['id'])
+    game_ref = db.db.collection("game").document(game['id'])
+
     if update._effective_user.id in game.get('players_list', []):
         await query.edit_message_text("You've already joined this game")
         return BROWSE_GAMES
 
 
     await query.edit_message_text(
-        f"✅ You've joined the {game.get('sport')} game! \n"
+        f"✅ Click the link below to join the {game.get('sport')} game! \n"
         f"Group: {game.get('group_link')}",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 Back to Filters", callback_data="back_to_filters")]

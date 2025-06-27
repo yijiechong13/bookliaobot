@@ -10,6 +10,8 @@ def validate_date_format(date_str):
         
         day, month, year = map(int, date_str.split('/'))
 
+        standardized_date = f"{day:02d}/{month:02d}/{year}"
+
         if not (1 <= day <= 31):
             return False, "Day must be between 1 and 31"
         if not (1 <= month <= 12):
@@ -26,7 +28,7 @@ def validate_date_format(date_str):
         if test_date.date() < today: 
             return False, "Date cannot be in the past"
         
-        return True, date_str  
+        return True, standardized_date
 
     except ValueError:
         return False, "Invalid date. Please check your input (e.g., 25/12/2025)"

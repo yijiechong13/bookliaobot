@@ -1,4 +1,3 @@
-##import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ChatMemberHandler
 from createagame import *
 from hostedgames import *  
@@ -132,6 +131,7 @@ def main():
         print("✅ Database and reminder service initialized")
     except Exception as e:
         print(f"❌ Error initializing services: {e}")
+        traceback.print_exc()
         return
 
     job_queue = application.job_queue
@@ -241,7 +241,6 @@ def main():
     )
 
     application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('cancel', cancel))
     application.add_handler(CallbackQueryHandler(start, pattern="^start$"))
 
     application.add_handler(host_conv)

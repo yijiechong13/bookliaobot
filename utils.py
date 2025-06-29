@@ -26,7 +26,7 @@ def validate_date_format(date_str):
         sg_tz = pytz.timezone("Asia/Singapore")
         today = datetime.now(sg_tz).date()
         if test_date.date() < today: 
-            return False, "Date cannot be in the past"
+            return False, ""
         
         return True, standardized_date
 

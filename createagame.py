@@ -139,7 +139,7 @@ async def date_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_valid, date = validate_date_format(user_input)
 
     if not is_valid: 
-        await update.message.reply_text(f"❌{date}\n\nPlease enter the date again:")
+        await update.message.reply_text(f"❌Date cannot be in the past. \n\nPlease enter the date again:")
         return DATE
     
     context.user_data["date"] = date

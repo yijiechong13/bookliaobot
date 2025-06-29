@@ -72,7 +72,7 @@ class ReminderService:
         
         try:
             # Check if we're within 23-25 hours before the game
-            if timedelta(hours=23) <= time_until_game <= timedelta(hours=26):
+            if timedelta(hours=23.5) <= time_until_game <= timedelta(hours=24.5):
                 # Check if reminder hasn't been sent yet
                 reminder_sent = game_data.get('reminder_24h_sent', False)
                 return not reminder_sent

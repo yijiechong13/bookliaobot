@@ -153,11 +153,8 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if error:
         await update.message.reply_text(
-            f"❌ {error}\n\n"
-            "Please try again with formats like:\n"
-            "• 2pm-4pm\n"
-            "• 14:00-16:00\n"
-            "• 2:30pm-4:30pm"
+            f"❌ Time format is not recognised. \n\n"
+            "Please try again with this format: 2pm-4pm\n"
         )
         return TIME
     
@@ -331,5 +328,4 @@ async def post_announcement(context, game_data, user):
             [InlineKeyboardButton("✋ Join Game", url=game_data["group_link"])]
         ])
     )
-
 

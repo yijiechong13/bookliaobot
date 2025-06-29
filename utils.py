@@ -16,7 +16,7 @@ def validate_date_format(date_str):
             return False, "Day must be between 1 and 31"
         if not (1 <= month <= 12):
             return False, "Month must be between 1 and 12"
-        if year < 2024:
+        if year < 2025:
             return False, "Year must be 2025 or later"
         
         #Create datetime object : Validate if date exist
@@ -64,7 +64,7 @@ def parse_time_input(time_str):
             }, None
         
         else:
-            return None, "Time format is not recognised. Please use format like '2pm-5pm'. "
+            return None, " "
         
     except Exception as e:
         return None, f"Error parsing time: {str(e)}"

@@ -146,7 +146,7 @@ def main():
     # Run reminder check every 30 minutes (fixed from 1 minute)
     job_queue.run_repeating(
         send_reminder, 
-        interval=timedelta(minutes=30),
+        interval=timedelta(minutes=5),
         first=15  # Start after 15 seconds
     )
 

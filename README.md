@@ -19,6 +19,15 @@ iii) FIREBASE_CREDENTIALS = ".firebasekey.json"
 
 8. Add these to .env file:
 ## Get these from https://my.telegram.org/auth 
+Under API Development Tools: 
+Create a new application by filling out the form:
+
+App title: (any name you want)
+Short name: (short identifier)
+URL: (can be empty or your website)
+Platform: Other (Telegram Bot)
+
+You'll get: 
 TELEGRAM_API_ID=your_api_id 
 TELEGRAM_API_HASH=your_api_hash 
 TELEGRAM_PHONE_NUMBER=your phone number

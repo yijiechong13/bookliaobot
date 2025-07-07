@@ -9,7 +9,7 @@ import asyncio
 from datetime import timedelta
 from reminder import ReminderService
 import traceback
-from countmembers import handle_member_update
+from membertracking import track_new_members, track_left_members, track_chat_member_updates, initialize_member_counts
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 from joingamehandlers import *
@@ -82,15 +82,22 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     print(f"❌ Error: {type(error).__name__}: {error}")
     print(f"📋 Traceback:\n{error_traceback}")
+
+    if update is None:
+        print("⚠️ Update is None - likely a background job error")
+        return
     
-    if update.callback_query:
-        await update.callback_query.message.reply_text(
-            "⚠️ An error occurred. Please try again or /start"
+    try:
+        if update.callback_query:
+            await update.callback_query.message.reply_text(
+                "⚠️ An error occurred. Please try again or /start"
         )
-    elif update.message:
-        await update.message.reply_text(
-            "⚠️ An error occurred. Please try again or /start"
+        elif update.message:
+            await update.message.reply_text(
+                "⚠️ An error occurred. Please try again or /start"
         )
+    except Exception as e:
+        print(f"❌ Error in error handler: {e}")
         
 async def cleanup_expired_games(context):
     try:
@@ -112,6 +119,16 @@ async def send_reminder(context):
         print("✅ Reminder check completed")
     except Exception as e:
         print(f"❌ Error in reminder job: {e}")
+
+async def initialize_member_counts_job(context):
+    """Initialize member counts for existing games on startup"""
+    try:
+        print("🔄 Initializing member counts...")
+        await initialize_member_counts(context)
+        print("✅ Member count initialization completed")
+    except Exception as e:
+        print(f"❌ Error in member count initialization: {e}")
+
 
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
@@ -148,6 +165,11 @@ def main():
         send_reminder, 
         interval=timedelta(minutes=5),
         first=15  # Start after 15 seconds
+    )
+
+    job_queue.run_once(
+        initialize_member_counts_job,
+        when=30  # Run 30 seconds after startup
     )
 
     print("✅ Scheduled jobs configured")
@@ -246,12 +268,25 @@ def main():
     application.add_handler(host_conv)
     application.add_handler(join_conv)
 
-    # Add chat member handler for tracking joins/leaves
-    application.add_handler(ChatMemberHandler(handle_member_update, ChatMemberHandler.CHAT_MEMBER))
+     # Handle regular member joins
+    application.add_handler(MessageHandler(
+        filters.StatusUpdate.NEW_CHAT_MEMBERS,
+        track_new_members
+    ))
 
+     # Handle regular member leaves
+    application.add_handler(MessageHandler(
+        filters.StatusUpdate.LEFT_CHAT_MEMBER,
+        track_left_members
+    ))
+
+      # Handle admin actions (kicks, bans, promotions)
+    application.add_handler(ChatMemberHandler(
+        track_chat_member_updates, 
+        ChatMemberHandler.CHAT_MEMBER
+    ))
 
     application.add_error_handler(error_handler)
-    
 
     print("🚀 Bot is starting...") 
     try:

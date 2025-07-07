@@ -260,9 +260,10 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "end_time_24": game_data["end_time_24"],      
             "host": update.effective_user.id,
             "status": "open",
-            "group_id": game_data.get("group_id"), 
+            "group_id": str(group_result["group_id"]), 
             "reminder_24h_sent": False,
-            "player_count": initial_player_count
+            "player_count": initial_player_count,
+            "host_username": update.effective_user.username
         }
         
         game_id = db.save_game(game_doc_data)

@@ -39,10 +39,28 @@ class TelethonService:
 
         if not self.client:
             await self.initialize()
+
+        SPORT_EMOJIS = {
+    "football": "⚽",
+    "basketball": "🏀",
+    "tennis": "🎾",
+    "volleyball": "🏐",
+    "badminton": "🏸",
+    "ultimate frisbee": "🥏",
+    "floorball": "🏑",
+    "table tennis": "🏓",
+    "touch rugby": "🏉"
+}
             
         try:
-            #Group name 
-            group_name = f"{game_data['sport']} - {game_data['date']} - {game_data['venue']}"
+            sport = game_data["sport"]
+            sport_key = sport.lower()
+            emoji = SPORT_EMOJIS.get(sport_key, "🏅")  # fallback if not found
+
+            venue = game_data["venue"].title()
+            date = game_data["date"]
+
+            group_name = f"{emoji} {sport.title()} @ {venue} • {date}"
 
             #Group description 
             description = (
@@ -117,7 +135,29 @@ class TelethonService:
             invite = await self.client(ExportChatInviteRequest(group_entity))
             invite_link = invite.link
 
-            
+            welcome_message = (
+                f"👋 **Welcome to your game session!**\n\n"
+                f"📅 **Date:** {game_data['date']}\n"
+                f"🕒 **Time:** {game_data['time_display']}\n"
+                f"📍 **Venue:** {game_data['venue'].title()}\n"
+                f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
+                f"📋 **What to expect:**\n"
+                 f"• A poll will be sent 24 hours before the game to confirm attendance\n"
+                f"• You'll receive 24-hour & 2-hour reminders before the game starts\n"
+                f"ℹ️ You can also find these details in the **group description** anytime.\n"
+                f"Enjoy your session and have fun! 🎉"
+            )
+
+            await self.client.send_message(
+                entity=group_entity,
+                message=welcome_message,
+                parse_mode="markdown"
+            )
+                        
+
+            #Creator leaves the group after setup
+            await self.client(LeaveChannelRequest(group_entity))
+
             
             
             return {

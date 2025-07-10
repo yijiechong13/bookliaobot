@@ -268,6 +268,8 @@ def main():
     application.add_handler(host_conv)
     application.add_handler(join_conv)
 
+    # Add chat member handler for tracking joins/leaves
+    application.add_handler(ChatMemberHandler(handle_member_update, ChatMemberHandler.CHAT_MEMBER))
      # Handle regular member joins
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS,

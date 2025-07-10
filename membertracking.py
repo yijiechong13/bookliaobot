@@ -15,7 +15,7 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         chat_id = update.message.chat.id
-        new_members = update.message.new_chat_members
+        new_members = update.message.new_chat_members #returns a list 
         
         # Log the actual chat_id for debugging
         print(f"🔍 New members in chat_id: {chat_id}")
@@ -164,9 +164,6 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
         print(f"❌ Error in track_chat_member_updates: {e}")
 
 async def get_game_by_group_id(db, group_id):
-    """
-    Find a game by its group ID
-    """
     try:
         games_ref = db.db.collection("game")
         
@@ -226,15 +223,6 @@ async def update_member_count(context: ContextTypes.DEFAULT_TYPE, game_data, cou
                 print(f"✅ Updated announcement for game {game_id} to {new_count} players")
             except Exception as e:
                 print(f"❌ Failed to update announcement: {e}")
-                # Try to get fresh game data if update failed
-                fresh_data = db.get_game(game_id)
-                if fresh_data:
-                    await update_announcement_with_count(
-                        context,
-                        fresh_data,
-                        new_count,
-                        fresh_data.get("announcement_msg_id")
-                    )
         
         # Log user actions
         user_names = [user.first_name for user in users]

@@ -25,7 +25,7 @@ Create a new application by filling out the form:
 App title: (any name you want)
 Short name: (short identifier)
 URL: (can be empty or your website)
-Platform: Other (Telegram Bot)
+Platform: Other (Telegramcd Bot)
 
 You'll get: 
 TELEGRAM_API_ID=your_api_id 

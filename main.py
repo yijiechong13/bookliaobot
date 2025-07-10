@@ -130,6 +130,15 @@ async def initialize_member_counts_job(context):
         print(f"❌ Error in member count initialization: {e}")
 
 
+async def initialize_reminders_job(context):
+    try:
+        print("⏰ Initializing reminders...")
+        reminder_service = context.bot_data['reminder_service']
+        await reminder_service.schedule_all_existing_reminders(context)
+        print("✅ Reminder initialization completed")
+    except Exception as e:
+        print(f"❌ Error in reminder initialization: {e}")
+
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
     if not TOKEN:
@@ -160,11 +169,10 @@ def main():
         first=10  # Start after 10 seconds
     )
 
-    # Run reminder check every 30 minutes (fixed from 1 minute)
-    job_queue.run_repeating(
-        send_reminder, 
-        interval=timedelta(minutes=5),
-        first=15  # Start after 15 seconds
+    # Initialize reminders for existing games on startup
+    job_queue.run_once(
+        initialize_reminders_job,
+        when=20  # Run 20 seconds after startup
     )
 
     job_queue.run_once(
@@ -201,6 +209,12 @@ def main():
             DATE:[MessageHandler(filters.TEXT & ~filters.COMMAND, date_chosen)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
+        #     VENUE_CONFIRM: [
+        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:.*$"),
+        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_original:.*$"), 
+        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
+        # ],
+
             SKILL: [CallbackQueryHandler(skill_chosen)],
             CONFIRMATION: [CallbackQueryHandler(save_game, pattern="^confirm_game$"),
                            CallbackQueryHandler(cancel, pattern="^cancel_game$")],
@@ -268,8 +282,6 @@ def main():
     application.add_handler(host_conv)
     application.add_handler(join_conv)
 
-    # Add chat member handler for tracking joins/leaves
-    application.add_handler(ChatMemberHandler(handle_member_update, ChatMemberHandler.CHAT_MEMBER))
      # Handle regular member joins
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS,

@@ -328,4 +328,3 @@ async def post_announcement(context, game_data, user):
             [InlineKeyboardButton("✋ Join Game", url=game_data["group_link"])]
         ])
     )
-

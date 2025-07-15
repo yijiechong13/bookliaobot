@@ -552,4 +552,3 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ])
     )
     return BROWSE_GAMES
-

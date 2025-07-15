@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils import validate_date_format, parse_time_input
 from telethon_service import telethon_service
 from config import *
+from fuzzywuzzy import fuzz, process
 
 load_dotenv() 
 
@@ -168,7 +169,85 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["venue"] = update.message.text
+    VENUES = {
+        "Raffles Hall": ["RH", "Raffles", "Raffles Hall"],
+        "Multi Purpose Hall": ["MPSH", "Sports Hall", "Multi Purpose"],
+        "UTown Sports Hall": ["UTown", "UTown Sports"],
+        "University Sports Centre": ["USC", "Sports Centre"]
+    }
+    user_input = update.message.text.strip()
+
+    # check if input is very short
+    if len(user_input) <= 3:
+        choices = []
+        for venue, aliases in VENUES.items():
+            choices.extend(aliases)
+        
+        matches = process.extract(user_input, choices, limit=3) #Top 3 matches
+        # Filter matches with score > 60 and get unique venue names
+        good_matches = []
+        seen_venues = set()
+        for match, score in matches:
+            if score > 60:
+                for venue, aliases in VENUES.items():
+                    if matches in aliases and venue not in seen_venues:
+                        good_matches.append((venue, score))
+                        seen_venues.add(venue)
+                        break
+        
+        if good_matches:
+            keyboard = []
+            for venues, score in good_matches:
+                keyboard.append([InlineKeyboardButton(
+                    f"✅ {venue} (Confidence: {score}%)",
+                    callback_data=f"venue_confirm: {user_input}"
+                )])
+            
+            # Option to keep original input
+            keyboard.append([InlineKeyboardButton(
+                f"❌ Keep original: '{user_input}'",
+                callback_data=f"venues_original:{user_input}"
+            )])
+
+            # Option to retype
+
+            keyboard.append([InlineKeyboardButton(
+                f"🔄 Retype venue",
+                callback_data="venues_retype"
+            )])
+
+            await update.message.reply_text(
+                f"Did you mean one of these venues?",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return VENUE_CONFIRM
+        
+    context.user_data['venue'] = user_input
+    return await select_skill(update, context)
+
+async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.startswith("venue_confirm"):
+        venue = query.data.split(":")[1]
+        context.user_data["venue"] = venue
+    elif query.data.startswith("venue_original"):
+        venue = query.data.split(":")[1]
+        context.user_data["venue"] = venue
+    if query.data == "venue_retype":
+        await query.edit_message_text("Please enter the venue/location again:")
+        return VENUE
+    
+    return await select_skill(update, context)
+
+async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        message = query.message
+    else:
+        message = update.message
 
     keyboard = [
         [InlineKeyboardButton("Beginner", callback_data="Beginner")],

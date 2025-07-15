@@ -12,6 +12,7 @@ import traceback
 from membertracking import track_new_members, track_left_members, track_chat_member_updates, initialize_member_counts
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
+
 from joingamehandlers import *
 from config import * 
 from dotenv import load_dotenv
@@ -202,19 +203,18 @@ def main():
             CallbackQueryHandler(create_game, pattern="^create_game$"),
             CallbackQueryHandler(view_hosted_games, pattern="^view_hosted_games$"),
             CallbackQueryHandler(back_to_main, pattern="^back_to_main$")
-        ],
+            ],
             ASK_BOOKING: [CallbackQueryHandler(handle_venue_response, pattern="^(venue_yes|venue_no)$")],
             WAITING_BOOKING_CONFIRM: [CallbackQueryHandler(after_booking, pattern="^done_booking$")],
             SPORT: [CallbackQueryHandler(sport_chosen)],
             DATE:[MessageHandler(filters.TEXT & ~filters.COMMAND, date_chosen)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
-        #     VENUE_CONFIRM: [
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:.*$"),
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_original:.*$"), 
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
-        # ],
-
+            VENUE_CONFIRM: [
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:.*$"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_original:.*$"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
+                ],
             SKILL: [CallbackQueryHandler(skill_chosen)],
             CONFIRMATION: [CallbackQueryHandler(save_game, pattern="^confirm_game$"),
                            CallbackQueryHandler(cancel, pattern="^cancel_game$")],
@@ -222,11 +222,11 @@ def main():
                 CallbackQueryHandler(navigate_hosted_games, pattern="^(prev_game|next_game)$"),
                 CallbackQueryHandler(cancel_game_prompt, pattern="^cancel_game_prompt$"),
                 CallbackQueryHandler(back_to_main, pattern="^back_to_main$")
-            ],
+                ],
             CONFIRM_CANCEL: [
                 CallbackQueryHandler(confirm_cancel_game, pattern="^confirm_cancel$"),
                 CallbackQueryHandler(back_to_list, pattern="^back_to_list$")
-            ]
+                ]
         },
         fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
         conversation_timeout = 300, 

@@ -62,7 +62,7 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
 
 
         keyboard.append([
-            InlineKeyboardButton("🧹 Clear All Filters", callback_data="clear_filters"),
+            InlineKeyboardButton("🧹 Clear Filters", callback_data="clear_filters"),
             InlineKeyboardButton("🔙 Back", callback_data="start"),
             ])
         

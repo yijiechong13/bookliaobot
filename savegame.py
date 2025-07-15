@@ -93,6 +93,7 @@ class GameDatabase:
             return 0
 
     def _validate_game_data(self, game_data, game_id):
+        """Validate that game has required fields for expiration check"""
         required_fields = ['date', 'end_time_24']
         
         for field in required_fields:
@@ -103,6 +104,7 @@ class GameDatabase:
         return True
 
     async def _update_expired_announcement(self, context, game_data, announcement_msg_id):
+        """Update the announcement message to show expired status"""
         try:
             ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
             if not ANNOUNCEMENT_CHANNEL:
@@ -164,6 +166,7 @@ class GameDatabase:
             return None
     
     def cleanup_invalid_games(self):
+        """Clean up games with missing required fields"""
         try:
             games_ref = self.db.collection("game")
             results = games_ref.stream()

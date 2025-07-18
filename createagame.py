@@ -168,11 +168,47 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return VENUE
     
 VENUES = {
-        "Raffles Hall": ["RH", "Raffles", "Raffles Hall"],
-        "Multi Purpose Hall": ["MPSH", "Sports Hall", "Multi Purpose"],
-        "UTown Sports Hall": ["UTown", "UTown Sports"],
-        "University Sports Centre": ["USC", "Sports Centre"]
-    }
+    "Raffles Hall": ["RH", "Raffles"],
+    "Kent Ridge Hall": ["KRH", "Kent Ridge"],
+    "Temasek Hall": ["TH", "Temasek"],
+    "Eusoff Hall": ["EH", "Eusoff"],
+    "Sheares Hall": ["SH", "Sheares"],
+    "King Edward VII Hall": ["KEVII", "KE7", "King Edward"],
+    "Ridge View Residential College": ["RVRC", "Ridge View"],
+    "Cinnamon College": ["Cinnamon", "USC College"],
+    "Tembusu College": ["Tembusu", "RC4"],
+    "College of Alice & Peter Tan": ["CAPT", "Alice Peter"],
+    "Residential College 4": ["RC4"],
+    
+    # ActiveSG Facilities
+    "Jurong East Sports Centre": ["JESC", "Jurong East", "JE Sports"],
+    "Queenstown Sports Centre": ["QTSC", "Queenstown", "Queenstown Sports"],
+    "Bishan Sports Hall": ["BSH", "Bishan", "Bishan Sports"],
+    "Toa Payoh Sports Hall": ["TPSH", "Toa Payoh", "TP Sports"],
+    "Bedok Sports Centre": ["BSC", "Bedok", "Bedok Sports"],
+    "Pasir Ris Sports Centre": ["PRSC", "Pasir Ris", "PR Sports"],
+    "Tampines Sports Centre": ["TSC", "Tampines", "Tampines Sports"],
+    "Serangoon Sports Centre": ["SSC", "Serangoon", "Serangoon Sports"],
+    "Clementi Sports Centre": ["CSC", "Clementi", "Clementi Sports"],
+    "Bukit Gombak Sports Centre": ["BGSC", "Bukit Gombak", "BG Sports"],
+    "Yio Chu Kang Sports Centre": ["YCKSC", "YCK", "Yio Chu Kang"],
+    "Sengkang Sports Centre": ["SKSC", "Sengkang", "SK Sports"],
+    "Hougang Sports Centre": ["HSC", "Hougang", "Hougang Sports"],
+    "Woodlands Sports Centre": ["WSC", "Woodlands", "Woodlands Sports"],
+    "Choa Chu Kang Sports Centre": ["CCKSC", "CCK", "Choa Chu Kang"],
+    "Yishun Sports Centre": ["YSC", "Yishun", "Yishun Sports"],
+    "Kallang Tennis Centre": ["KTC", "Kallang Tennis"],
+    "Kallang Squash Centre": ["KSC", "Kallang Squash"],
+    "Jalan Besar Stadium": ["JBS", "Jalan Besar"],
+    "Our Tampines Hub": ["OTH", "Tampines Hub"],
+    "OCBC Arena": ["OCBC", "Sports Hub Arena"],
+    "Singapore Sports Hub": ["SSH", "Sports Hub", "National Stadium"],
+    
+    # Other Public Facilities
+    "Farrer Park Swimming Complex": ["Farrer Park", "Farrer Pool"],
+    "Queenstown Swimming Complex": ["Queenstown Pool", "QT Pool"],
+    "Jalan Besar Swimming Complex": ["Jalan Besar Pool", "JB Pool"]
+}
 
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text.strip()

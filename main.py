@@ -211,8 +211,8 @@ def main():
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
             VENUE_CONFIRM: [
-                CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:.*$"),
-                CallbackQueryHandler(venue_confirmation, pattern="^venue_original:.*$"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_keep:"),
                 CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
                 ],
             SKILL: [CallbackQueryHandler(skill_chosen)],

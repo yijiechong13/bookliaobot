@@ -354,7 +354,8 @@ async def initialize_member_counts(context: ContextTypes.DEFAULT_TYPE):
             
         # Get all open games
         games_ref = db.db.collection("game")
-        query = games_ref.where(filter=db.firestore.FieldFilter("status", "==", "open"))
+        query = games_ref.where(filter=
+        db.firestore.FieldFilter("status", "==", "open"))
         results = query.stream()
         
         for game_doc in results:

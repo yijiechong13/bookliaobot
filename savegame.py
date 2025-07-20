@@ -16,6 +16,7 @@ class GameDatabase:
             cred = credentials.Certificate(FIREBASE_CREDENTIALS)
             firebase_admin.initialize_app(cred)
         self.db = firestore.client()
+        self.firestore = firestore  # Add this for the FieldFilter
     
     def save_game(self, game_data):
         game_data["created_at"] = firestore.SERVER_TIMESTAMP 
@@ -43,6 +44,17 @@ class GameDatabase:
                 .where(filter=firestore.FieldFilter("status", "==", "open")))
         results = query.stream()
         return [{"id": game.id, **game.to_dict()} for game in results] 
+
+    async def get_all_open_games(self):
+        """Get all open games for member count initialization"""
+        try:
+            games_ref = self.db.collection("game")
+            query = games_ref.where(filter=firestore.FieldFilter("status", "==", "open"))
+            results = query.stream()
+            return [{"id": game.id, **game.to_dict()} for game in results]
+        except Exception as e:
+            print(f"❌ Error getting all open games: {e}")
+            return []
     
     async def close_expired_games(self, context: ContextTypes.DEFAULT_TYPE): 
         try: 

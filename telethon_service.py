@@ -1,7 +1,7 @@
 import os
 from telethon import TelegramClient
 from telethon.tl.functions.messages import ExportChatInviteRequest
-from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest
+from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest, LeaveChannelRequest
 from telethon.tl.types import ChatAdminRights
 from dotenv import load_dotenv
 import logging
@@ -28,7 +28,7 @@ class TelethonService:
             
             #Connects to telegeram and logs in to account: can use via phone number or bot accounts 
             #only user account can create group (bot token cannot)
-            await self.client.start(phone=self.phone_number)
+            await self.client.start(phone = self.phone_number)
             self.initialized = True
 
         except Exception as e:
@@ -39,10 +39,28 @@ class TelethonService:
 
         if not self.client:
             await self.initialize()
+
+        SPORT_EMOJIS = {
+    "football": "⚽",
+    "basketball": "🏀",
+    "tennis": "🎾",
+    "volleyball": "🏐",
+    "badminton": "🏸",
+    "ultimate frisbee": "🥏",
+    "floorball": "🏑",
+    "table tennis": "🏓",
+    "touch rugby": "🏉"
+}
             
         try:
-            #Group name 
-            group_name = f"{game_data['sport']} - {game_data['date']} - {game_data['venue']}"
+            sport = game_data["sport"]
+            sport_key = sport.lower()
+            emoji = SPORT_EMOJIS.get(sport_key, "🏅")  # fallback if not found
+
+            venue = game_data["venue"].title()
+            date = game_data["date"]
+
+            group_name = f"{emoji} {sport.title()} @ {venue} • {date}"
 
             #Group description 
             description = (
@@ -73,15 +91,15 @@ class TelethonService:
             admin_rights = ChatAdminRights(
             change_info=False,           # Can't change group info
             post_messages=True,          # Can send messages (essential!)
-            edit_messages=False,         # Can't edit messages
+            edit_messages=True,         # Can edit messages
             delete_messages=True,        # Can delete messages (useful for moderation)
-            ban_users=False,             # Can't ban users
-            invite_users=False,          # Can't invite users
+            ban_users=True,             # Can ban users
+            invite_users=True,          # Can invite users
             pin_messages=True,           # Can pin messages (useful for important announcements)
             add_admins=False,            # Can't add other admins
             anonymous=False,             # Not anonymous
             manage_call=False,           # Can't manage voice calls
-            other=False                  # No other special permissions
+            other=False,                # No other special permissions              
         )
         
             # Make bot an admin
@@ -91,17 +109,63 @@ class TelethonService:
                 admin_rights=admin_rights,
                 rank="Bot"  
             ))
+
+            #Making host the admin 
+            host_entity = await self.client.get_entity(host_user.id)
+            await self.client(EditAdminRequest(
+                channel=group_entity,
+                user_id=host_entity,
+                admin_rights=ChatAdminRights(
+                change_info=True,
+                post_messages=True,
+                delete_messages=True,
+                ban_users=True,
+                invite_users=True,
+                pin_messages=True,
+                add_admins=True,
+                anonymous=False,
+                manage_call=True,
+                other=True
+            ),
+                rank="Host"
+            ))
+
             
             # Generate invite link
             invite = await self.client(ExportChatInviteRequest(group_entity))
             invite_link = invite.link
+
+            welcome_message = (
+                f"👋 **Welcome to your game session!**\n\n"
+                f"📅 **Date:** {game_data['date']}\n"
+                f"🕒 **Time:** {game_data['time_display']}\n"
+                f"📍 **Venue:** {game_data['venue'].title()}\n"
+                f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
+                f"📋 **What to expect:**\n"
+                 f"• A poll will be sent 24 hours before the game to confirm attendance\n"
+                f"• You'll receive 24-hour & 2-hour reminders before the game starts\n"
+                f"ℹ️ You can also find these details in the **group description** anytime.\n"
+                f"Enjoy your session and have fun! 🎉"
+            )
+
+            await self.client.send_message(
+                entity=group_entity,
+                message=welcome_message,
+                parse_mode="markdown"
+            )
+                        
+
+            #Creator leaves the group after setup
+            await self.client(LeaveChannelRequest(group_entity))
+
             
             
             return {
                 "group_link": invite_link,
                 "group_id": group_id,
                 "group_name": group_name,
-                "bot_added": True
+                "bot_added": True,
+                "creator_left": True
             } 
     
         except Exception as e:

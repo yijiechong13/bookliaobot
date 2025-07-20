@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, time
 import pytz
 
 
@@ -48,13 +48,29 @@ def parse_time_input(time_str):
             end_hour = int(match.group(4))
             end_min = int(match.group(5)) if match.group(5) else 0
             end_period = match.group(6)
+
+            # Validate hour ranges
+            if not (1 <= start_hour <= 12) or not (1 <= end_hour <= 12):
+                return None, "Hours must be between 1 and 12"
             
+            # Validate minute ranges
+            if not (0 <= start_min <= 59) or not (0 <= end_min <= 59):
+                return None, "Minutes must be between 0 and 59"
+
             # Convert to 24-hour format
             start_24 = convert_to_24_hour(start_hour, start_period)
             end_24 = convert_to_24_hour(end_hour, end_period)
             
             if start_24 is None or end_24 is None:
                 return None, "Invalid time format"
+            
+            # Create time objects for comparison
+            start_time = time(start_24, start_min)
+            end_time = time(end_24, end_min)
+
+              # Validate that end time is after start time
+            if end_time <= start_time:
+                return None, "❌ End time must be later than start time! "
                   
             return {
                 "original_input": time_str,
@@ -64,7 +80,8 @@ def parse_time_input(time_str):
             }, None
         
         else:
-            return None, " "
+            return None, (f"❌ Time format is not recognised. \n\n"
+            "Please try again with this format: 2pm-4pm\n")
         
     except Exception as e:
         return None, f"Error parsing time: {str(e)}"
@@ -99,7 +116,6 @@ def is_game_expired(date_str, end_time_24):
         print(f"Error checking expiration: {e}")
         return False
     
-
 
 
 

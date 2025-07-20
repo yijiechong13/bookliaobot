@@ -7,11 +7,12 @@
     DATE, 
     TIME, 
     VENUE,
+    VENUE_CONFIRM,
     SKILL, 
     CONFIRMATION, 
     VIEW_HOSTED_GAMES, 
     CONFIRM_CANCEL
-) = range(11)
+) = range(12)
 
 
 #Conversation states for joining games and preference 
@@ -23,7 +24,7 @@
     SETTING_TIME,
     SETTING_VENUE,
     BROWSE_GAMES, 
-)= range(11, 18)
+)= range(12, 19)
 
 
 #To Check ! 

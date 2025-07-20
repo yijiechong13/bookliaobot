@@ -167,8 +167,110 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return VENUE
     
     
+VENUES = {
+    "Raffles Hall": ["RH", "Raffles"],
+    "Kent Ridge Hall": ["KRH", "Kent Ridge"],
+    "Temasek Hall": ["TH", "Temasek"],
+    "Eusoff Hall": ["EH", "Eusoff"],
+    "Sheares Hall": ["SH", "Sheares"],
+    "King Edward VII Hall": ["KEVII", "KE7", "King Edward"],
+    "Ridge View Residential College": ["RVRC", "Ridge View"],
+    "Cinnamon College": ["Cinnamon", "USC College"],
+    "Tembusu College": ["Tembusu", "RC4"],
+    "College of Alice & Peter Tan": ["CAPT", "Alice Peter"],
+    "Residential College 4": ["RC4"],
+    
+    # ActiveSG Facilities
+    "Jurong East Sports Centre": ["JESC", "Jurong East", "JE Sports"],
+    "Queenstown Sports Centre": ["QTSC", "Queenstown", "Queenstown Sports"],
+    "Bishan Sports Hall": ["BSH", "Bishan", "Bishan Sports"],
+    "Toa Payoh Sports Hall": ["TPSH", "Toa Payoh", "TP Sports"],
+    "Bedok Sports Centre": ["BSC", "Bedok", "Bedok Sports"],
+    "Pasir Ris Sports Centre": ["PRSC", "Pasir Ris", "PR Sports"],
+    "Tampines Sports Centre": ["TSC", "Tampines", "Tampines Sports"],
+    "Serangoon Sports Centre": ["SSC", "Serangoon", "Serangoon Sports"],
+    "Clementi Sports Centre": ["CSC", "Clementi", "Clementi Sports"],
+    "Bukit Gombak Sports Centre": ["BGSC", "Bukit Gombak", "BG Sports"],
+    "Yio Chu Kang Sports Centre": ["YCKSC", "YCK", "Yio Chu Kang"],
+    "Sengkang Sports Centre": ["SKSC", "Sengkang", "SK Sports"],
+    "Hougang Sports Centre": ["HSC", "Hougang", "Hougang Sports"],
+    "Woodlands Sports Centre": ["WSC", "Woodlands", "Woodlands Sports"],
+    "Choa Chu Kang Sports Centre": ["CCKSC", "CCK", "Choa Chu Kang"],
+    "Yishun Sports Centre": ["YSC", "Yishun", "Yishun Sports"],
+    "Kallang Tennis Centre": ["KTC", "Kallang Tennis"],
+    "Kallang Squash Centre": ["KSC", "Kallang Squash"],
+    "Jalan Besar Stadium": ["JBS", "Jalan Besar"],
+    "Our Tampines Hub": ["OTH", "Tampines Hub"],
+    "OCBC Arena": ["OCBC", "Sports Hub Arena"],
+    "Singapore Sports Hub": ["SSH", "Sports Hub", "National Stadium"],
+    
+    # Other Public Facilities
+    "Farrer Park Swimming Complex": ["Farrer Park", "Farrer Pool"],
+    "Queenstown Swimming Complex": ["Queenstown Pool", "QT Pool"],
+    "Jalan Besar Swimming Complex": ["Jalan Besar Pool", "JB Pool"]
+}
+
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["venue"] = update.message.text
+    user_input = update.message.text.strip()
+
+    matches = []
+    for venue, aliases in VENUES.items():
+        all_names = aliases + [venue]
+        best_match, score = process.extractOne(user_input, all_names)
+        if score>60:
+            matches.append((venue,score))
+
+    if matches:
+        matches.sort(key=lambda x: x[1], reverse=True)
+
+        keyboard =[
+            [InlineKeyboardButton(
+                f"✅ {venue} (Similarity: {score}%)",
+                callback_data=f"venue_confirm:{venue}"
+            )] for venue, score in matches[:3]
+        ]
+
+        keyboard += [
+            [InlineKeyboardButton(
+                f"❌ Keep original: '{user_input}'",
+                callback_data=f"venue_keep:{user_input}"
+            )],
+            [InlineKeyboardButton("🔄 Retype venue", callback_data="venue_retype")]
+            ]
+        await update.message.reply_text(
+            "Did you mean one of these venues?",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return VENUE_CONFIRM
+    
+    # If no matches from the list, proceed with original venue
+    context.user_data['venue'] = user_input
+    return await select_skill(update, context)
+
+async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.startswith("venue_confirm:"):
+        venue = query.data.split(":")[1].strip()
+        context.user_data["venue"] = venue
+        
+    elif query.data.startswith("venue_keep:"):
+        venue = query.data.split(":")[1]
+        context.user_data["venue"] = venue
+
+    elif query.data == "venue_retype":
+        context.user_data.pop('venue', None)
+        await query.edit_message_text("Please enter the venue/location:")
+        context.user_data['venue_retry'] = True
+        return VENUE
+
+async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message:
+        message=update.message
+    else:
+        await update.callback_query.answer()
+        message = update.callback_query.message
 
     keyboard = [
         [InlineKeyboardButton("Beginner", callback_data="Beginner")],
@@ -176,11 +278,12 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Advanced", callback_data="Advanced")]
     ]
 
-    await update.message.reply_text(
-        "Select skill level:",
-        reply_markup=InlineKeyboardMarkup(keyboard))
+    await context.bot.send_message(
+        chat_id=message.chat_id,
+        text="Select skill level:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
     return SKILL
-
 async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -260,9 +363,10 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "end_time_24": game_data["end_time_24"],      
             "host": update.effective_user.id,
             "status": "open",
-            "group_id": game_data.get("group_id"), 
+            "group_id": str(group_result["group_id"]), 
             "reminder_24h_sent": False,
-            "player_count": initial_player_count
+            "player_count": initial_player_count,
+            "host_username": update.effective_user.username
         }
         
         game_id = db.save_game(game_doc_data)
@@ -328,4 +432,3 @@ async def post_announcement(context, game_data, user):
             [InlineKeyboardButton("✋ Join Game", url=game_data["group_link"])]
         ])
     )
-

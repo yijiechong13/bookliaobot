@@ -225,7 +225,7 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard =[
             [InlineKeyboardButton(
-                f"✅ {venue} (Confidence: {score}%)",
+                f"✅ {venue} (Similarity: {score}%)",
                 callback_data=f"venue_confirm:{venue}"
             )] for venue, score in matches[:3]
         ]

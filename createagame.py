@@ -130,8 +130,21 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("booking_chat_id", None)
     
     if context.user_data.get("auto_create_group"):
-        sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
-        keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
+        sports = [
+            ("⚽ Football", "Football"),
+            ("🏀 Basketball", "Basketball"),
+            ("🎾 Tennis", "Tennis"),
+            ("🏐 Volleyball", "Volleyball"),
+            ("🏸 Badminton", "Badminton"),
+            ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
+            ("🏑 Floorball", "Floorball"),
+            ("🏓 Table Tennis", "Table Tennis"),
+            ("🏉 Touch Rugby", "Touch Rugby")
+        ]
+        
+        keyboard = []
+        for text, data in sports:
+            keyboard.append([InlineKeyboardButton(str(text), callback_data=str(data))])
 
         await query.message.reply_text(
             "Which sport are you hosting?",

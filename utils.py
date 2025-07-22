@@ -26,7 +26,7 @@ def validate_date_format(date_str):
         sg_tz = pytz.timezone("Asia/Singapore")
         today = datetime.now(sg_tz).date()
         if test_date.date() < today: 
-            return False, ""
+            return False, "Date cannot be in the past"
         
         return True, standardized_date
 
@@ -70,7 +70,7 @@ def parse_time_input(time_str):
 
               # Validate that end time is after start time
             if end_time <= start_time:
-                return None, "❌ End time must be later than start time! "
+                return None, "End time must be later than start time"
                   
             return {
                 "original_input": time_str,
@@ -80,8 +80,7 @@ def parse_time_input(time_str):
             }, None
         
         else:
-            return None, (f"❌ Time format is not recognised. \n\n"
-            "Please try again with this format: 2pm-4pm\n")
+            return None, "Invalid time format"
         
     except Exception as e:
         return None, f"Error parsing time: {str(e)}"

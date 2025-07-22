@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils import validate_date_format, parse_time_input
 from telethon_service import telethon_service
 from config import *
+from fuzzywuzzy import fuzz, process
 
 load_dotenv() 
 
@@ -65,9 +66,20 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data.pop("booking_msg_id", None)
         context.user_data.pop("booking_chat_id", None)
         
-        # Show sport selection
-        sports = ["⚽ Football", "🏀 Basketball", "🎾 Tennis", "🏐 Volleyball"]
-        keyboard = [[InlineKeyboardButton(sport, callback_data=sport[2:])] for sport in sports]
+        sports = [
+    ("⚽ Football", "Football"),
+    ("🏀 Basketball", "Basketball"),
+    ("🎾 Tennis", "Tennis"),
+    ("🏐 Volleyball", "Volleyball"),
+    ("🏸 Badminton", "Badminton"),
+    ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
+    ("🏑 Floorball", "Floorball"),
+    ("🏓 Table Tennis", "Table Tennis"),
+    ("🏉 Touch Rugby", "Touch Rugby")
+]
+        
+        keyboard = [[InlineKeyboardButton(text, callback_data=data)] for text, data in sports]
+        
 
         await query.edit_message_text(
             "Which sport are you hosting?",
@@ -153,8 +165,7 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if error:
         await update.message.reply_text(
-            f"❌ Time format is not recognised. \n\n"
-            "Please try again with this format: 2pm-4pm\n"
+            error
         )
         return TIME
     
@@ -252,18 +263,29 @@ async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
 
     if query.data.startswith("venue_confirm:"):
-        venue = query.data.split(":")[1].strip()
+        venue = query.data.split(":", 1)[1].strip()  # Use split with maxsplit=1 to handle colons in venue names
         context.user_data["venue"] = venue
         
+        # Continue to skill selection after confirming venue
+        await query.edit_message_text(f"✅ Venue selected: {venue}")
+        return await select_skill(update, context)
+        
     elif query.data.startswith("venue_keep:"):
-        venue = query.data.split(":")[1]
+        venue = query.data.split(":", 1)[1]
         context.user_data["venue"] = venue
+        
+        # Continue to skill selection after keeping original venue
+        await query.edit_message_text(f"✅ Venue selected: {venue}")
+        return await select_skill(update, context)
 
     elif query.data == "venue_retype":
+        # Clear venue data and return to venue input
         context.user_data.pop('venue', None)
-        await query.edit_message_text("Please enter the venue/location:")
-        context.user_data['venue_retry'] = True
+        await query.edit_message_text("Please enter the venue/location again:")
         return VENUE
+
+    # This should not happen, but just in case
+    return VENUE_CONFIRM
 
 async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
@@ -293,7 +315,7 @@ async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     summary = (
         f"🏟️ New Game Listing:\n\n"
-        f"🏀 Sport: {game_data['sport']}\n"
+        f"🎖️ Sport: {game_data['sport']}\n"
         f"📅 Date: {game_data['date']}\n"
         f"🕒 Time: {game_data['time_display']}\n"
         f"📍 Venue: {game_data['venue']}\n"
@@ -315,6 +337,7 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     db = context.bot_data['db']
+    reminder_service = context.bot_data['reminder_service']
 
     try:
 
@@ -365,11 +388,19 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "status": "open",
             "group_id": str(group_result["group_id"]), 
             "reminder_24h_sent": False,
+            "reminder_2h_sent": False,
             "player_count": initial_player_count,
             "host_username": update.effective_user.username
         }
         
         game_id = db.save_game(game_doc_data)
+
+        try:
+            await reminder_service.schedule_game_reminders(context, game_doc_data, game_id)
+            print(f"✅ Reminders scheduled for new game {game_id}")
+        except Exception as reminder_error:
+            print(f"⚠️ Error scheduling reminders for game {game_id}: {reminder_error}")
+            # Don't fail the game creation if reminders fail
 
         announcement_data = {
             "sport": game_data["sport"],

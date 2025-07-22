@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List, Optional
 from rapidfuzz import fuzz, process
-import spacy
+import spacy 
 from collections import defaultdict
 
 class VenueNormalizer:

@@ -2,7 +2,8 @@ import os
 from telethon import TelegramClient
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest, LeaveChannelRequest
-from telethon.tl.types import ChatAdminRights
+from telethon.tl.types import ChatAdminRights, ChatBannedRights
+from telethon.tl.functions.messages import EditChatDefaultBannedRightsRequest
 from dotenv import load_dotenv
 import logging
 
@@ -110,6 +111,26 @@ class TelethonService:
                 rank="Bot"  
             ))
 
+            await self.client(EditChatDefaultBannedRightsRequest(
+                peer=group_entity,
+                banned_rights=ChatBannedRights(
+                    until_date=None,
+                    view_messages=False,
+                    send_messages=False,
+                    send_media=False,
+                    send_stickers=False,
+                    send_gifs=False,
+                    send_games=False,
+                    send_inline=False,
+                    embed_links=False,
+                    send_polls=False,
+                    change_info=False,
+                    invite_users=False,
+                    pin_messages=False, 
+                )
+            ))
+
+
             #Making host the admin 
             host_entity = await self.client.get_entity(host_user.id)
             await self.client(EditAdminRequest(
@@ -153,13 +174,11 @@ class TelethonService:
                 message=welcome_message,
                 parse_mode="markdown"
             )
-                        
+
 
             #Creator leaves the group after setup
-            await self.client(LeaveChannelRequest(group_entity))
+            #await self.client(LeaveChannelRequest(group_entity))
 
-            
-            
             return {
                 "group_link": invite_link,
                 "group_id": group_id,

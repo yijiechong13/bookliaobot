@@ -9,7 +9,14 @@ import asyncio
 from datetime import timedelta
 from reminder import ReminderService
 import traceback
-from membertracking import track_new_members, track_left_members, track_chat_member_updates, initialize_member_counts
+from membertracking import (
+    track_new_members, 
+    track_left_members, 
+    track_chat_member_updates, 
+    initialize_member_counts,
+    track_all_chat_member_changes,  # New function
+    periodic_member_sync            # New function
+)
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 from joingamehandlers import *
@@ -121,7 +128,6 @@ async def send_reminder(context):
         print(f"❌ Error in reminder job: {e}")
 
 async def initialize_member_counts_job(context):
-    """Initialize member counts for existing games on startup"""
     try:
         print("🔄 Initializing member counts...")
         await initialize_member_counts(context)
@@ -180,6 +186,14 @@ def main():
         when=30  # Run 30 seconds after startup
     )
 
+    job_queue.run_repeating(
+        periodic_member_sync,
+        interval=timedelta(seconds=30),
+        first=60  # Start after 1 minute
+    )
+
+
+
     print("✅ Scheduled jobs configured")
 
     async def init_telethon():
@@ -209,11 +223,11 @@ def main():
             DATE:[MessageHandler(filters.TEXT & ~filters.COMMAND, date_chosen)],
             TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, time_chosen)],
             VENUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, venue_chosen)],
-        #     VENUE_CONFIRM: [
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:.*$"),
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_original:.*$"), 
-        #     CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
-        # ],
+            VENUE_CONFIRM: [
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_confirm:"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_keep:"),
+                CallbackQueryHandler(venue_confirmation, pattern="^venue_retype$")
+                ],
 
             SKILL: [CallbackQueryHandler(skill_chosen)],
             CONFIRMATION: [CallbackQueryHandler(save_game, pattern="^confirm_game$"),
@@ -282,24 +296,27 @@ def main():
     application.add_handler(host_conv)
     application.add_handler(join_conv)
 
-     # Handle regular member joins
+    application.add_handler(ChatMemberHandler(
+        track_all_chat_member_changes, 
+        ChatMemberHandler.CHAT_MEMBER
+    ))
+
+    # Handle the bot's own status changes in groups
+    application.add_handler(ChatMemberHandler(
+        track_all_chat_member_changes,
+        ChatMemberHandler.MY_CHAT_MEMBER
+    ))
+
+    # Keep the regular message handlers for redundancy
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS,
         track_new_members
     ))
 
-     # Handle regular member leaves
     application.add_handler(MessageHandler(
         filters.StatusUpdate.LEFT_CHAT_MEMBER,
         track_left_members
     ))
-
-      # Handle admin actions (kicks, bans, promotions)
-    application.add_handler(ChatMemberHandler(
-        track_chat_member_updates, 
-        ChatMemberHandler.CHAT_MEMBER
-    ))
-
     application.add_error_handler(error_handler)
 
     print("🚀 Bot is starting...") 

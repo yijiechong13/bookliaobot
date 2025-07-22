@@ -1,6 +1,4 @@
-import pytest
-from datetime import datetime
-import pytz
+
 from freezegun import freeze_time
 from utils import validate_date_format, parse_time_input, is_game_expired, convert_to_24_hour
 
@@ -45,7 +43,15 @@ class TestTimeParser:
 
     def test_invalid_format(self):
         _, err = parse_time_input("2-4")
-        assert err and "recognised" in err
+        assert err and "Invalid time format" in err
+    
+    def test_end_time_before_start_time(self):
+        _, err = parse_time_input("4pm-2pm")
+        assert err == "End time must be later than start time"
+
+    def test_same_start_and_end_time(self):
+        _, err = parse_time_input("3pm-3pm")
+        assert err == "End time must be later than start time"
 
 class TestGameExpiration:
     

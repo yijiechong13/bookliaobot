@@ -24,7 +24,6 @@ class GameDatabase:
         game_ref.set(game_data)
         return game_ref.id
     
-    # Targets specific firestore document using game_id
     def update_game(self, game_id, update_data):
         try:
             game_ref = self.db.collection("game").document(game_id)

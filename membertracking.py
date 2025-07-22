@@ -7,9 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handler for new member joins (filters.StatusUpdate.NEW_CHAT_MEMBERS)
-    """
     try:
         if not update.message or not update.message.new_chat_members:
             return
@@ -56,9 +53,6 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"❌ Error in track_new_members: {e}")
 
 async def track_left_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handler for member leaves (filters.StatusUpdate.LEFT_CHAT_MEMBER)
-    """
     try:
         if not update.message or not update.message.left_chat_member:
             return
@@ -102,9 +96,6 @@ async def track_left_members(update: Update, context: ContextTypes.DEFAULT_TYPE)
         print(f"❌ Error in track_left_members: {e}")
 
 async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handler for ChatMemberUpdated events (admin actions like kicks/bans)
-    """
     try:
         chat_member_update = update.chat_member
         if not chat_member_update:
@@ -328,10 +319,6 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
         return False
 
 async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
-    """
-    Get the actual current member count of a group (excluding bots)
-    This is useful for initialization or verification
-    """
     try:
         # Ensure group_id is an integer for the API call
         if isinstance(group_id, str):
@@ -365,10 +352,6 @@ async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
         return 1
 
 async def sync_member_count(context: ContextTypes.DEFAULT_TYPE, game_data):
-    """
-    Sync the stored member count with the actual group count
-    Use this sparingly, only when needed (e.g., on startup or after errors)
-    """
     try:
         group_id = game_data.get('group_id')
         if not group_id:
@@ -399,9 +382,6 @@ async def sync_member_count(context: ContextTypes.DEFAULT_TYPE, game_data):
         print(f"❌ Error syncing member count: {e}")
 
 async def initialize_member_counts(context: ContextTypes.DEFAULT_TYPE):
-    """
-    Initialize member counts for existing games (run once on startup)
-    """
     try:
         db = context.bot_data.get('db')
         if not db:
@@ -454,96 +434,27 @@ async def initialize_member_counts(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"❌ Error initializing member counts: {e}")
 
-
 async def track_all_chat_member_changes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Comprehensive handler for ALL chat member status changes
-    This catches joins/leaves that don't show up as regular messages
-    """
     try:
-        chat_member_update = update.chat_member
-        if not chat_member_update:
-            return
-            
-        chat_id = chat_member_update.chat.id
-        user = chat_member_update.new_chat_member.user
-        old_status = chat_member_update.old_chat_member.status
-        new_status = chat_member_update.new_chat_member.status
-        
-        # Log all status changes for debugging
-        print(f"🔍 Chat member status change in {chat_id}:")
-        print(f"   User: {user.first_name} (@{user.username}) ID: {user.id}")
-        print(f"   Status: {old_status} -> {new_status}")
-        print(f"   Is Bot: {user.is_bot}")
-        
-        # Skip bots
-        if user.is_bot:
-            print("   Skipping bot user")
-            return
-            
-        # Get game data
-        db = context.bot_data.get('db')
-        if not db:
-            print("   No database connection")
-            return
-            
-        game_data = await get_game_by_group_id(db, chat_id)
-        if not game_data:
-            print(f"   No game found for chat_id: {chat_id}")
-            return
-            
-        # Skip host
-        host_id = game_data.get('host')
-        if str(user.id) == str(host_id):
-            print(f"   Skipping host user {user.first_name}")
-            return
-            
-        # Detect actual joins and leaves with more comprehensive status checking
-        is_join = False
-        is_leave = False
-        
-        # User joined - more comprehensive detection
-        if (old_status in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED, None] and 
-            new_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]):
-            is_join = True
-            print(f"✅ Detected JOIN via ChatMember: {user.first_name}")
-            
-        # User left - comprehensive detection
-        elif (old_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER] and 
-              new_status in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED, ChatMemberStatus.BANNED]):
-            is_leave = True
-            print(f"❌ Detected LEAVE via ChatMember: {user.first_name}")
-            
-        # Also check for restrictions that effectively remove the user
-        elif (old_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR] and 
-              new_status == ChatMemberStatus.RESTRICTED):
-            # Check if restricted user can still send messages
-            if not chat_member_update.new_chat_member.can_send_messages:
-                is_leave = True
-                print(f"❌ Detected RESTRICTED LEAVE: {user.first_name}")
-            
-        if is_join or is_leave:
-            print(f"🔄 Updating member count for game {game_data.get('id')}")
-            await update_member_count(
-                context, 
-                game_data, 
-                1, 
-                is_join,  # is_join
-                [user]
-            )
+        member_update: ChatMemberUpdated = update.chat_member
+        old_status = member_update.old_chat_member.status
+        new_status = member_update.new_chat_member.status
+        user = member_update.new_chat_member.user
+        chat = member_update.chat
+
+        if old_status in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED] and new_status == ChatMemberStatus.MEMBER:
+            print(f"[JOIN] {user.full_name} (id: {user.id}) joined '{chat.title}' via status change.")
+
+        elif old_status == ChatMemberStatus.MEMBER and new_status in [ChatMemberStatus.LEFT, ChatMemberStatus.KICKED]:
+            print(f"[LEAVE] {user.full_name} (id: {user.id}) left or was removed from '{chat.title}'.")
+
         else:
-            print(f"   No count update needed for {user.first_name}")
-            
+            print(f"[INFO] {user.full_name} status changed from {old_status} to {new_status} in '{chat.title}'")
+
     except Exception as e:
-        print(f"❌ Error in track_all_chat_member_changes: {e}")
-        import traceback
-        traceback.print_exc()
-        
+        print(f"[ERROR] Failed to process chat member change: {e}")
+
 async def periodic_member_sync(context):
-    """
-    Periodically sync member counts for all active games
-    This catches any missed joins/leaves
-    """
     try:
         print("🔄 Running periodic member count sync...")
         db = context.bot_data.get('db')
@@ -598,9 +509,6 @@ async def periodic_member_sync(context):
 
 # Also update your get_actual_member_count function with better error handling
 async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
-    """
-    Enhanced version with better error handling and member filtering
-    """
     try:
         # Ensure group_id is properly formatted
         if isinstance(group_id, str):

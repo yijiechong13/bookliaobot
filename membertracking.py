@@ -553,4 +553,4 @@ async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
             
     except Exception as e:
         print(f"❌ Error getting member count for {group_id}: {e}")
-        return 1
+        return 1 

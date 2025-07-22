@@ -446,7 +446,7 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def post_announcement(context, game_data, user):
     ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
     announcement_text = (
-        f"🎮 New {game_data['sport']} Game!\n\n"
+        f"🏟️ New {game_data['sport']} Game!\n\n"
         f"📅 Date: {game_data['date']}\n"
         f"🕒 Time: {game_data['time_display']}\n"
         f"📍 Venue: {game_data['venue']}\n"

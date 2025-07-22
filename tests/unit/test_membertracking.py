@@ -96,9 +96,14 @@ class TestMemberTracking(unittest.IsolatedAsyncioTestCase):
         update.chat_member.old_chat_member.status = ChatMemberStatus.MEMBER
         update.chat_member.new_chat_member.status = ChatMemberStatus.BANNED
         
+        # Make sure the async mock returns the game data
         mock_get_game.return_value = self.game_data
         mock_update_announcement.return_value = True
         self.context.bot_data['db'].update_game = MagicMock()
+        
+        # Debug: Print what we're testing
+        print(f"Testing status change: {ChatMemberStatus.MEMBER} -> {ChatMemberStatus.BANNED}")
+        print(f"User ID: {self.user1.id}, Host ID: {self.game_data['host']}")
         
         await track_chat_member_updates(update, self.context)
         
@@ -108,18 +113,19 @@ class TestMemberTracking(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call_args[0][0], 'game123')
         self.assertEqual(call_args[0][1]['player_count'], 2)  # 3 - 1
 
-    @patch('membertracking.update_announcement_with_count')
-    async def test_update_member_count(self, mock_update_announcement):
-        # Setup
-        mock_update_announcement.return_value = True
-        self.context.bot_data['db'].update_game = MagicMock()
-        
-        # Test join
-        await update_member_count(self.context, self.game_data, 2, True, [self.user1, self.user2])
-        
-        # Verify
-        self.context.bot_data['db'].update_game.assert_called_once_with('game123', {'player_count': 5})
-        mock_update_announcement.assert_called_once()
+
+        @patch('membertracking.update_announcement_with_count')
+        async def test_update_member_count(self, mock_update_announcement):
+            # Setup
+            mock_update_announcement.return_value = True
+            self.context.bot_data['db'].update_game = MagicMock()
+            
+            # Test join
+            await update_member_count(self.context, self.game_data, 2, True, [self.user1, self.user2])
+            
+            # Verify
+            self.context.bot_data['db'].update_game.assert_called_once_with('game123', {'player_count': 5})
+            mock_update_announcement.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

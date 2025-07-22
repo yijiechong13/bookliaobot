@@ -108,14 +108,17 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
         
         # Log the actual chat_id for debugging
         print(f"🔍 Chat member update in chat_id: {chat_id}")
+        print(f"🔄 Status change: {old_status} -> {new_status}")
         
         # Skip bots
         if user.is_bot:
+            print(f"⏭️ Skipping bot user: {user.first_name}")
             return
             
         # Get game data
         db = context.bot_data.get('db')
         if not db:
+            print("❌ No database connection available")
             return
             
         game_data = await get_game_by_group_id(db, chat_id)
@@ -126,23 +129,27 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
         # Skip host
         host_id = game_data.get('host')
         if str(user.id) == str(host_id):
+            print(f"⏭️ Skipping host user: {user.first_name}")
             return
             
         # Check for admin actions that affect member count
         is_removed = False
         is_added = False
         
-        # User was kicked or banned
+        # User was kicked or banned (more specific status checking)
         if (old_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR] and 
-            new_status in [ChatMemberStatus.KICKED, ChatMemberStatus.LEFT]):
+            new_status in [ChatMemberStatus.BANNED, ChatMemberStatus.LEFT]):
             is_removed = True
+            print(f"👋 User {user.first_name} was removed (status: {new_status})")
             
         # User was unbanned or promoted to member
-        elif (old_status in [ChatMemberStatus.KICKED, ChatMemberStatus.LEFT] and 
+        elif (old_status in [ChatMemberStatus.KICKED, ChatMemberStatus.BANNED, ChatMemberStatus.LEFT] and 
               new_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR]):
             is_added = True
+            print(f"👥 User {user.first_name} was added back (status: {new_status})")
             
         if is_removed or is_added:
+            print(f"🔄 Updating member count for {'addition' if is_added else 'removal'}")
             await update_member_count(
                 context, 
                 game_data, 
@@ -150,9 +157,13 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
                 is_added,  # is_join
                 [user]
             )
+        else:
+            print(f"ℹ️ Status change doesn't affect member count: {old_status} -> {new_status}")
             
     except Exception as e:
-        print(f"❌ Error initializing member tracking: {e}")
+        print(f"❌ Error in track_chat_member_updates: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Keep your existing helper functions
 async def get_game_by_group_id(db, group_id):

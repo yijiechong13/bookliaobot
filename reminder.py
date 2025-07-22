@@ -10,7 +10,6 @@ class ReminderService:
         self.sg_tz = pytz.timezone("Asia/Singapore")
 
     async def schedule_game_reminders(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id): 
-        """Schedule reminders for a specific game at exact times"""
         try:
             game_datetime = await self.game_start_datetime(game_data)
             if not game_datetime:
@@ -65,7 +64,6 @@ class ReminderService:
             print(f"❌ Error scheduling reminders for game {game_id}: {e}")
 
     async def send_24h_reminder_job(self, context: ContextTypes.DEFAULT_TYPE):
-        """Job callback for 24-hour reminder"""
         try:
             job_data = context.job.data
             game_id = job_data['game_id']
@@ -96,7 +94,6 @@ class ReminderService:
             print(f"❌ Error in 24h reminder job: {e}")
 
     async def send_2h_reminder_job(self, context: ContextTypes.DEFAULT_TYPE):
-        """Job callback for 2-hour reminder"""
         try:
             job_data = context.job.data
             game_id = job_data['game_id']
@@ -127,7 +124,6 @@ class ReminderService:
             print(f"❌ Error in 2h reminder job: {e}")
 
     async def schedule_all_existing_reminders(self, context: ContextTypes.DEFAULT_TYPE):
-        """Schedule reminders for all existing open games (run on startup)"""
         try:
             games_ref = self.db.db.collection("game")
             query = games_ref.where("status", "==", "open")
@@ -153,7 +149,6 @@ class ReminderService:
             print(f"❌ Error scheduling existing reminders: {e}")
 
     async def cancel_game_reminders(self, context: ContextTypes.DEFAULT_TYPE, game_id):
-        """Cancel all scheduled reminders for a specific game"""
         try:
             # Cancel 24h reminder
             job_name_24h = f"reminder_24h_{game_id}"
@@ -295,5 +290,4 @@ class ReminderService:
 
     # Legacy method for backward compatibility - now just calls the new scheduling method
     async def send_game_reminders(self, context: ContextTypes.DEFAULT_TYPE):
-        """Legacy method - redirects to schedule_all_existing_reminders"""
         await self.schedule_all_existing_reminders(context)

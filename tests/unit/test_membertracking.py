@@ -1,13 +1,12 @@
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telegram import Update, Chat, User, ChatMemberUpdated, ChatMember, Message
+from telegram import Chat, User
 from telegram.constants import ChatMemberStatus
 from membertracking import (
     track_new_members,
     track_left_members,
     track_chat_member_updates,
     update_member_count,
-    get_game_by_group_id,
 )
 
 class TestMemberTracking(unittest.IsolatedAsyncioTestCase):

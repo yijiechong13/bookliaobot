@@ -1,8 +1,6 @@
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from savegame import GameDatabase
-from firebase_admin import firestore
 from telegram.ext import ContextTypes
 import os
 

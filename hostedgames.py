@@ -50,7 +50,6 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📍 Venue: {game['venue']}\n"
         f"📊 Skill: {game['skill'].title()}\n"
         f"🔗 Group: {game['group_link']}\n"
-        f"🟢 Status: {game['status'].title()}"
     )
     
     keyboard = []

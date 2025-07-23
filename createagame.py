@@ -192,7 +192,6 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Enter the venue/location:")
     return VENUE
     
-    
 VENUES = {
     "Raffles Hall": ["RH", "Raffles"],
     "Kent Ridge Hall": ["KRH", "Kent Ridge"],
@@ -244,7 +243,7 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for venue, aliases in VENUES.items():
         all_names = aliases + [venue]
         best_match, score = process.extractOne(user_input, all_names)
-        if score>60:
+        if score>40:
             matches.append((venue,score))
 
     if matches:
@@ -271,8 +270,12 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return VENUE_CONFIRM
     
     # If no matches from the list, proceed with original venue
-    context.user_data['venue'] = user_input
-    return await select_skill(update, context)
+    await update.message.reply_text(
+        "Could not find any similar venues.Please check your spelling and try again."
+    )
+    return VENUE
+    #context.user_data['venue'] = user_input
+    #return await select_skill(update, context)
 
 async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -297,7 +300,9 @@ async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif query.data == "venue_retype":
         # Clear venue data and return to venue input
         context.user_data.pop('venue', None)
-        await query.edit_message_text("Please enter the venue/location again:")
+        await context.bot.send_message(
+            chat_id =query.message.chat_id,
+            text="Please enter the venue/location again:")
         return VENUE
 
     # This should not happen, but just in case

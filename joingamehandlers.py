@@ -189,7 +189,7 @@ async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
     except Exception as e:
         logging.error(f"Clear filter error : {str(e)}")
-        await query.edit_message_text("Could not clear filters. Please try again later.")
+        await query.edit_message_text("❌ Could not clear filters. Please try again later.")
         return await show_filter_menu(update, "🔍 Filters cleared! Filter games by:", context)
 
 async def back_to_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -350,7 +350,7 @@ async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
             raise
     except Exception as e:
         logging.error(f"Time filter error: {str(e)}")
-        await query.edit_message_text("Couldnt update time selectiion. Please try again.")
+        await query.edit_message_text("❌ Couldnt update time selectiion. Please try again.")
     return SETTING_TIME
 
 async def filter_venue(update: Update,context: ContextTypes.DEFAULT_TYPE):
@@ -440,7 +440,7 @@ async def apply_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     except Exception as e:
         logging.error(f"Error apply filters: {str(e)}")
-        await query.edit_message_text("Failed to apply filters. Please try again.")
+        await query.edit_message_text("❌ Failed to apply filters. Please try again.")
         return await show_filter_menu (update, "🔍 Filter games by:", context)
 
 

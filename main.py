@@ -144,6 +144,41 @@ async def initialize_reminders_job(context):
     except Exception as e:
         print(f"❌ Error in reminder initialization: {e}")
 
+async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
+    feedback_message = (
+        "📝 *We'd love to hear from you!*\n\n"
+        "Your feedback helps us improve BookLiao Bot and make it better for all NUS students. "
+        "Whether you have suggestions, found a bug, or just want to share your experience, "
+        "we're all ears! 👂\n\n"
+        "Please take a moment to fill out our feedback form:\n"
+        "👉 [Click here to provide feedback](https://docs.google.com/forms/d/e/1FAIpQLSevzlxuZ_lnQFC7wRhkk5g-75u4rnvfFGh3YlFBNsec3jaYcA/viewform?usp=dialog)\n\n"
+        "Thank you for helping us make BookLiao Bot even better! 🙏"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📝 Open Feedback Form", url="https://docs.google.com/forms/d/e/1FAIpQLSevzlxuZ_lnQFC7wRhkk5g-75u4rnvfFGh3YlFBNsec3jaYcA/viewform?usp=dialog")],
+        [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="start")]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if update.message:
+        await update.message.reply_text(
+            text=feedback_message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown',
+            disable_web_page_preview=True
+        )
+    elif update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            text=feedback_message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown',
+            disable_web_page_preview=True
+        )
+
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
     if not TOKEN:
@@ -292,6 +327,8 @@ def main():
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CallbackQueryHandler(start, pattern="^start$"))
+
+    application.add_handler(CommandHandler('feedback', feedback))
 
     application.add_handler(host_conv)
     application.add_handler(join_conv)

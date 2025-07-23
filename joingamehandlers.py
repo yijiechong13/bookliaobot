@@ -47,7 +47,7 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
         val = lambda v: v and (not isinstance(v, (list, dict, str)) or bool(v))
 
         buttons = [
-            [f"⚽ Sports {'✅' if val(filters.get('sport')) else ''}", "filter_sport"],
+            [f"🎖️ Sports {'✅' if val(filters.get('sport')) else ''}", "filter_sport"],
             [f"📅 Date {'✅' if val(filters.get('date')) else ''}", "filter_date"],
             [f"🕒 Time {'✅' if val(filters.get('time')) else ''}", "filter_time"],
             [f"📍 Venue {'✅' if val(filters.get('venue')) else ''}", "filter_venue"],
@@ -167,7 +167,7 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
         if filter_type == 'sport':
             options = {doc.to_dict().get("sport") for doc in games_ref.stream()}
             options.discard(None)
-            title = "⚽ Select sports (multiple allowed):"
+            title = "🎖️Select sports (multiple allowed):"
         elif filter_type == 'skill':
             options = {doc.to_dict().get("skill") for doc in games_ref.stream()}
             options.discard(None)
@@ -347,7 +347,7 @@ async def apply_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not context.user_data.get('filters', {}).get(filter_type):
             msgs = {
-                'sport': "⚽ All sports",
+                'sport': "🎖️ All sports",
                 'skill': "📊 All skills",
                 'date': "📅 All dates",
                 'time': "🕒 All times",
@@ -477,7 +477,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     game_info = (
         f"🎯 <b>Matching Game #{page+1}</b>\n\n"
-        f"🏅 <b>Sport:</b> {game.get('sport', 'N/A').title()}\n"
+        f"🎖️ <b>Sport:</b> {game.get('sport', 'N/A').title()}\n"
         f"📅 <b>Date:</b> {game.get('date', 'N/A')}\n"
         f"🕒 <b>Time:</b> {game.get('start_time_24', 'N/A')} - {game.get('end_time_24', 'N/A')}\n"
         f"📍 <b>Venue:</b> {game.get('venue', 'N/A')}\n"

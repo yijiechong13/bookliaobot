@@ -3,15 +3,28 @@ from datetime import datetime, time
 import pytz
 
 
+import re
+from datetime import datetime
+import pytz
+
+
 def validate_date_format(date_str): 
     try: 
+        # First check: Does it match the expected format?
         if not re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', date_str):
             return False, "Please use dd/mm/yyyy format (e.g., 25/12/2025)"
         
-        day, month, year = map(int, date_str.split('/'))
+        # Parse the components
+        parts = date_str.split('/')
+        if len(parts) != 3:
+            return False, "Please use dd/mm/yyyy format (e.g., 25/12/2025)"
+        
+        try:
+            day, month, year = map(int, parts)
+        except ValueError:
+            return False, "Please use dd/mm/yyyy format (e.g., 25/12/2025)"
 
-        standardized_date = f"{day:02d}/{month:02d}/{year}"
-
+        # Validate ranges before creating datetime object
         if not (1 <= day <= 31):
             return False, "Day must be between 1 and 31"
         if not (1 <= month <= 12):
@@ -19,10 +32,16 @@ def validate_date_format(date_str):
         if year < 2025:
             return False, "Year must be 2025 or later"
         
-        #Create datetime object : Validate if date exist
-        test_date = datetime(year, month, day)
+        # Now try to create datetime object to validate if date exists
+        try:
+            test_date = datetime(year, month, day)
+        except ValueError:
+            return False, "Invalid date. Please check your input (e.g., 25/12/2025)"
 
-        #Singapore timezone
+        # Format the standardized date
+        standardized_date = f"{day:02d}/{month:02d}/{year}"
+
+        # Check if date is in the past (only after confirming it's a valid date)
         sg_tz = pytz.timezone("Asia/Singapore")
         today = datetime.now(sg_tz).date()
         if test_date.date() < today: 
@@ -30,8 +49,8 @@ def validate_date_format(date_str):
         
         return True, standardized_date
 
-    except ValueError:
-        return False, "Invalid date. Please check your input (e.g., 25/12/2025)"
+    except Exception as e:
+        return False, "Please use dd/mm/yyyy format (e.g., 25/12/2025)"
     
 def parse_time_input(time_str):
 

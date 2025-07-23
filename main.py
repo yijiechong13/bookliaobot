@@ -149,16 +149,12 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     feedback_message = (
         "📝 *We'd love to hear from you!*\n\n"
         "Your feedback helps us improve BookLiao Bot and make it better for all NUS students. "
-        "Whether you have suggestions, found a bug, or just want to share your experience, "
-        "we're all ears! 👂\n\n"
-        "Please take a moment to fill out our feedback form:\n"
-        "👉 [Click here to provide feedback](https://docs.google.com/forms/d/e/1FAIpQLSevzlxuZ_lnQFC7wRhkk5g-75u4rnvfFGh3YlFBNsec3jaYcA/viewform?usp=dialog)\n\n"
-        "Thank you for helping us make BookLiao Bot even better! 🙏"
+        "Tap the button below to open the feedback form.\n"
+        "Thank you! 🙏"
     )
     
     keyboard = [
         [InlineKeyboardButton("📝 Open Feedback Form", url="https://docs.google.com/forms/d/e/1FAIpQLSevzlxuZ_lnQFC7wRhkk5g-75u4rnvfFGh3YlFBNsec3jaYcA/viewform?usp=dialog")],
-        [InlineKeyboardButton("🏠 Back to Main Menu", callback_data="start")]
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)

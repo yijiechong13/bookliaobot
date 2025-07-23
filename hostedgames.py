@@ -44,7 +44,7 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     text = (
         f"📋 Your Game Listing ({current_index + 1}/{len(games)}):\n\n"
-        f"🏀 Sport: {game['sport']}\n"
+        f"🎖️ Sport: {game['sport']}\n"
         f"📅 Date: {game['date']}\n"
         f"🕒 Time: {game['time_display']}\n"
         f"📍 Venue: {game['venue']}\n"

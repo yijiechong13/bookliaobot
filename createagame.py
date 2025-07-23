@@ -161,13 +161,15 @@ async def sport_chosen (update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def date_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE): 
     user_input = update.message.text
     
-    is_valid, date = validate_date_format(user_input)
+    is_valid, result = validate_date_format(user_input)
 
     if not is_valid: 
-        await update.message.reply_text(f"❌Date cannot be in the past. \n\nPlease enter the date again:")
+        # Use the actual error message returned by validate_date_format
+        await update.message.reply_text(f"❌ {result}\n\nPlease enter the date again:")
         return DATE
     
-    context.user_data["date"] = date
+    # If valid, result contains the standardized date
+    context.user_data["date"] = result
     await update.message.reply_text("What time is the game? E.g 2pm-4pm")
     return TIME
 
@@ -320,6 +322,7 @@ async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return SKILL
+
 async def skill_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()

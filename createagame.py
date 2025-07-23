@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from utils import validate_date_format, parse_time_input
 from telethon_service import telethon_service
 from config import *
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import process
 
 load_dotenv() 
 

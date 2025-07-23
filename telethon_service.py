@@ -65,7 +65,7 @@ class TelethonService:
 
             #Group description 
             description = (
-                f"🏀 Sport: {game_data['sport']}\n"
+                f"🏟️ Sport: {game_data['sport']}\n"
                 f"🕒 Time: {game_data['time_display']}\n"
                 f"📍 Venue: {game_data['venue']}\n"
                 f"📊 Skill Level: {game_data['skill'].title()}\n"

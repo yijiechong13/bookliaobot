@@ -12,7 +12,6 @@ import traceback
 from membertracking import (
     track_new_members, 
     track_left_members, 
-    track_chat_member_updates, 
     initialize_member_counts,
     track_all_chat_member_changes,  # New function
     periodic_member_sync            # New function

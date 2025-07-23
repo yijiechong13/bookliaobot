@@ -45,7 +45,6 @@ class GameDatabase:
         return [{"id": game.id, **game.to_dict()} for game in results] 
 
     async def get_all_open_games(self):
-        """Get all open games for member count initialization"""
         try:
             games_ref = self.db.collection("game")
             query = games_ref.where(filter=firestore.FieldFilter("status", "==", "open"))

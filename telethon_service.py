@@ -177,7 +177,7 @@ class TelethonService:
 
 
             #Creator leaves the group after setup
-            #await self.client(LeaveChannelRequest(group_entity))
+            await self.client(LeaveChannelRequest(group_entity))
 
             return {
                 "group_link": invite_link,

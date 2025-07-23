@@ -253,7 +253,8 @@ def main():
                 CallbackQueryHandler(handle_filter_selection,pattern="^filter_"),
                 CallbackQueryHandler(clear_filters,pattern="^clear_"),
                 CallbackQueryHandler(back_to_filters,pattern="^back_to_filters$"),
-                CallbackQueryHandler(show_results,pattern="^show_results$"),],
+                CallbackQueryHandler(show_results,pattern="^show_results$"),
+                CallbackQueryHandler(save_preferences, pattern=r'^save_preferences$')],
             SETTING_SPORTS: [
                 CallbackQueryHandler(toggle_filter,pattern="^toggle_filter_sport_"),
                 CallbackQueryHandler(clear_filters,pattern="^clear_sport_filters$"),

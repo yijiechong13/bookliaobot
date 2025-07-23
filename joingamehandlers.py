@@ -12,6 +12,26 @@ load_dotenv()
 
 db = None
 
+# Predefined sports list
+SPORTS_LIST = [
+    ("⚽ Football", "Football"),
+    ("🏀 Basketball", "Basketball"),
+    ("🎾 Tennis", "Tennis"),
+    ("🏐 Volleyball", "Volleyball"),
+    ("🏸 Badminton", "Badminton"),
+    ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
+    ("🏑 Floorball", "Floorball"),
+    ("🏓 Table Tennis", "Table Tennis"),
+    ("🏉 Touch Rugby", "Touch Rugby")
+]
+
+# Predefined skill levels
+SKILL_LEVELS = [
+    ("Beginner", "Beginner"),
+    ("Intermediate", "Intermediate"),
+    ("Advanced", "Advanced"),
+]
+
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db = context.bot_data['db']
     if db is None:
@@ -62,9 +82,10 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
 
 
         keyboard.append([
-            InlineKeyboardButton("🧹 Clear All Filters", callback_data="clear_filters"),
-            InlineKeyboardButton("🔙 Back", callback_data="start"),
-            ])
+    InlineKeyboardButton("🧹 Clear All Filters", callback_data="clear_filters"),
+    InlineKeyboardButton("💾 Save Preferences", callback_data="save_preferences"), 
+    InlineKeyboardButton("🔙 Back", callback_data="start"),
+])
         
         #Filters summary
         active_filters = "\n".join([f"• {k}: {v}" for k,v in filters.items()]) or "None"
@@ -89,6 +110,38 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
         if update.callback_query:
             await update.callback_query.message.reply_text("⚠️ Menu error. Please try again.")
         return ConversationHandler.END
+    
+async def save_preferences(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        db = context.bot_data['db']
+        filters = context.user_data.get('filters', {})
+        user_id = str(update.effective_user.id)
+        user_pref_ref = db.db.collection("user_preference").document(user_id)
+
+        pref_data = {
+            'sport': filters.get('sport'),
+            'skill': filters.get('skill'),
+            'venue': filters.get('venue'),
+            'updated_at': datetime.datetime.now()
+        }
+
+        # Only save non-empty preferences
+        pref_data = {k: v for k, v in pref_data.items() if v and k != 'updated_at'}
+        if pref_data:
+            pref_data['updated_at'] = datetime.datetime.now()
+            user_pref_ref.set(pref_data, merge=True)
+            
+            return await show_filter_menu(update, "✅ Preferences saved successfully! Filter games by:", context)
+        else:
+            return await show_filter_menu(update, "ℹ️ No preferences to save. Filter games by:", context)
+            
+    except Exception as e:
+        logging.error(f"Error saving preferences: {str(e)}")
+        await query.edit_message_text("❌ Failed to save preferences. Please try again.")
+        return await show_filter_menu(update, "🔍 Filter games by:", context)
 
 async def clear_filters(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -162,34 +215,51 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
         current_message = query.message.text
         current_markup = query.message.reply_markup
 
-        games_ref = context.bot_data['db'].db.collection("game").where('status', '==','open')
-        
+        # Use predefined lists for sport and skill, Firebase data for others
         if filter_type == 'sport':
-            options = {doc.to_dict().get("sport") for doc in games_ref.stream()}
-            options.discard(None)
+            options = [display for display, value in SPORTS_LIST]
             title = "🎖️Select sports (multiple allowed):"
         elif filter_type == 'skill':
-            options = {doc.to_dict().get("skill") for doc in games_ref.stream()}
-            options.discard(None)
+            options = [display for display, value in SKILL_LEVELS]
             title = "📊 Select skill levels (multiple allowed):"
-        elif filter_type == 'date':
-            options = {doc.to_dict().get("date") for doc in games_ref.stream()}
-            options.discard(None)
-            title = "📅 Select a date:"
-        elif filter_type == 'venue':
-            options = {doc.to_dict().get("venue") for doc in games_ref.stream()}
-            options.discard(None)
-            title = "📍 Pick venue/location (multiple allowed):"
+        else:
+            # For date and venue, still get from Firebase
+            games_ref = context.bot_data['db'].db.collection("game").where('status', '==','open')
+            
+            if filter_type == 'date':
+                options = {doc.to_dict().get("date") for doc in games_ref.stream()}
+                options.discard(None)
+                options = list(options)  # Convert set to list
+                title = "📅 Select a date:"
+            elif filter_type == 'venue':
+                options = {doc.to_dict().get("venue") for doc in games_ref.stream()}
+                options.discard(None)
+                options = list(options)  # Convert set to list
+                title = "📍 Pick venue/location (multiple allowed):"
         
         current_selection = context.user_data.get('filters', {}).get(filter_type, [])
         current_selection = [current_selection] if current_selection and not isinstance(current_selection,list) else current_selection or []
 
-        keyboard = [
-            [InlineKeyboardButton(
-                f"{'✅ ' if opt in current_selection else ''}{opt}",
+        keyboard = []
+        for opt in options:
+            # For sport and skill, we need to check against the actual values, not display text
+            if filter_type == 'sport':
+                # Find the actual value for this display option
+                actual_value = next((value for display, value in SPORTS_LIST if display == opt), opt)
+                is_selected = actual_value in current_selection
+            elif filter_type == 'skill':
+                # Find the actual value for this display option
+                actual_value = next((value for display, value in SKILL_LEVELS if display == opt), opt)
+                is_selected = actual_value in current_selection
+            else:
+                # For date and venue, direct comparison
+                is_selected = opt in current_selection
+            
+            keyboard.append([InlineKeyboardButton(
+                f"{'✅ ' if is_selected else ''}{opt}",
                 callback_data=f"toggle_filter_{filter_type}_{opt.lower()}"
-            )] for opt in options
-        ]
+            )])
+        
 
         keyboard.append([
             InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_{filter_type}_filters"),
@@ -298,8 +368,19 @@ async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise ValueError("Invalid callback data format")
         
         filter_type = parts[2]
-        filter_value = '_'.join(parts[3:]).title()
-
+        filter_value = '_'.join(parts[3:])
+        
+        # For sport and skill filters, we need to convert display text back to actual value
+        if filter_type == 'sport':
+            # Find the actual sport value from the display text
+            sport_map = {display.lower(): value for display, value in SPORTS_LIST}
+            filter_value = sport_map.get(filter_value.lower(), filter_value.title())
+        elif filter_type == 'skill':
+            # Find the actual skill value from the display text  
+            skill_map = {display.lower(): value for display, value in SKILL_LEVELS}
+            filter_value = skill_map.get(filter_value.lower(), filter_value.title())
+        else:
+            filter_value = filter_value.title()
 
         filters = context.user_data.setdefault('filters', {})
         selected = filters.get(filter_type, [])
@@ -552,4 +633,3 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ])
     )
     return BROWSE_GAMES
-

@@ -271,7 +271,7 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
             
         # Format announcement text
         announcement_text = (
-            f"🎮 New {game_data['sport']} Game!\n\n"
+            f"🏟️ New {game_data['sport']} Game!\n\n"
             f"📅 Date: {game_data['date']}\n"
             f"🕒 Time: {game_data['time_display']}\n"
             f"📍 Venue: {game_data['venue']}\n"

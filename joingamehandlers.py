@@ -464,18 +464,15 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'skill': filters.get('skill'),
         'venue': filters.get('venue'),
         'updated_at': datetime.datetime.now()
-
     }
 
     user_pref_ref.set(pref_data, merge=True)
-
 
     page = context.user_data.get('page', 0)
     games_ref = db.db.collection("game").where('status', '==', 'open')
 
     if time_ranges:= filters.get('time'):
         time_ranges = [time_ranges] if isinstance(time_ranges,str) else time_ranges
-
 
         def time_to_minutes(t):
             h, m = map(int, t.split(':'))
@@ -547,6 +544,36 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page %= len(games)
     context.user_data['page'] = page
     game = games[page]
+    
+    # Get fresh game data from Firebase to ensure accurate player count
+    try:
+        game_ref = db.db.collection("game").document(game['id'])
+        game_doc = game_ref.get()
+        
+        if game_doc.exists:
+            fresh_game_data = game_doc.to_dict()
+            # Update the game data with fresh info from Firebase
+            game.update(fresh_game_data)
+            game['id'] = game_doc.id  # Ensure ID is preserved
+            
+            # Get accurate player count from Firebase
+            players_list = fresh_game_data.get('players_list', [])
+            member_count = len(players_list)
+            
+            # Also check if there's a player_count field and use the higher value
+            firebase_player_count = fresh_game_data.get('player_count', 0)
+            member_count = max(member_count, firebase_player_count)
+            
+        else:
+            logging.warning(f"Game document {game['id']} not found in Firebase")
+            member_count = game.get('player_count', 1)
+            
+    except Exception as e:
+        logging.error(f"Error fetching fresh game data from Firebase for game {game.get('id')}: {str(e)}")
+        # Fallback to existing game data
+        players_list = game.get('players_list', [])
+        member_count = len(players_list) if players_list else game.get('player_count', 1)
+
     context.user_data['current_game'] = game
 
     filters_summary = "\n".join(
@@ -563,10 +590,9 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🕒 <b>Time:</b> {game.get('start_time_24', 'N/A')} - {game.get('end_time_24', 'N/A')}\n"
         f"📍 <b>Venue:</b> {game.get('venue', 'N/A')}\n"
         f"📊 <b>Skill:</b> {game.get('skill', 'Any').title()}\n"
-       # f"👥 <b>Players:</b> {len(game.get('players', []))} / {game.get('max_players',10)} "
-       # f"{'(🏟️ FULL)' if len(game.get('players', [])) >= game.get('max_players', 10) else '✅ OPEN'}\n\n"
-        f"🔗 <b>Group:</b> {game.get('group_link', 'Not  available')}\n\n"
-        f"🔎 <b>Filters applied:</b>{filters_summary}"
+        f"👥 <b>Players:</b> {member_count}\n"
+        f"🔗 <b>Group:</b> {game.get('group_link', 'Not available')}\n\n"
+        f"🔎 <b>Filters applied:</b> {filters_summary}"
     )
 
     buttons = []
@@ -576,11 +602,11 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(f"{page+1}/{len(games)}", callback_data="page_info"),
             InlineKeyboardButton("➡️ Next", callback_data="next_game")
         ]
+    
     action = [
         InlineKeyboardButton("✅ Join", callback_data="join_selected_game"),
         InlineKeyboardButton("🔙 Back to Filters", callback_data="back_to_filters"),
     ]
-
 
     reply_markup= InlineKeyboardMarkup([buttons, action] if buttons else [action])
 

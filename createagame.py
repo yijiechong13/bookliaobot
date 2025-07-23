@@ -274,8 +274,6 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Could not find any similar venues.Please check your spelling and try again."
     )
     return VENUE
-    #context.user_data['venue'] = user_input
-    #return await select_skill(update, context)
 
 async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query

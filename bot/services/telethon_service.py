@@ -6,7 +6,7 @@ from telethon.tl.types import ChatAdminRights, ChatBannedRights
 from telethon.tl.functions.messages import EditChatDefaultBannedRightsRequest
 from dotenv import load_dotenv
 import logging
-from constants import SPORT_EMOJIS  # ✅ Import from constants instead of duplicating
+from utils.constants import SPORT_EMOJIS 
 
 load_dotenv()
 

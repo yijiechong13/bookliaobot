@@ -12,8 +12,8 @@ class VenueNormalizer:
     def venue_database(self):
         return {
             'NUS Sports Centre': ['sports centre', 'nus sports', 'nus gym'],
-            'USC Sports Hall': ['usc hall', 'univeristy sports centre'],
-            'UTown Sports Hall': ['utown hall', 'univerity town'],
+            'USC Sports Hall': ['usc hall', 'university sports centre'],
+            'UTown Sports Hall': ['utown hall', 'university town'],
             'ActiveSG Yishun' : ["yishun sports hall", 'yishun gym'],
             'ActiveSG Clementi' : ['clementi sports hall']
         }

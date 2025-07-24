@@ -4,7 +4,7 @@ from freezegun import freeze_time
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
 import pytz
-from reminder import ReminderService
+from bot.services.reminder import ReminderService
 
 class TestReminderService:
     

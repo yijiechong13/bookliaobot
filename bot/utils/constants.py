@@ -103,3 +103,27 @@ BOOKING_URLS = {
     SETTING_VENUE,
     BROWSE_GAMES, 
 ) = range(12, 19)
+
+# Timezone
+SINGAPORE_TIMEZONE = "Asia/Singapore"
+
+# Date format patterns
+DATE_FORMAT_REGEX = r'^\d{1,2}/\d{1,2}/\d{4}$'
+DATE_FORMAT_EXAMPLE = "25/12/2025"
+
+# Time format patterns
+TIME_PATTERN = r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)'
+
+# Telegram supergroup ID offset
+TELEGRAM_SUPERGROUP_OFFSET = 1000000000000
+
+# Validation ranges
+MIN_YEAR = 2025
+MIN_DAY = 1
+MAX_DAY = 31
+MIN_MONTH = 1
+MAX_MONTH = 12
+MIN_HOUR_12 = 1
+MAX_HOUR_12 = 12
+MIN_MINUTE = 0
+MAX_MINUTE = 59

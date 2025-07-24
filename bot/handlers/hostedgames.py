@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from utils import ValidationHelper, DateTimeHelper
-from constants import *
+from utils.constants import *
 
 load_dotenv() 
 
@@ -54,7 +54,6 @@ class HostedGamesService:
     
     @staticmethod
     def format_game_display(game, current_index, total_games):
-        """Format game information for display"""
         return (
             f"📋 Your Game Listing ({current_index + 1}/{total_games}):\n\n"
             f"🎖️ Sport: {game['sport']}\n"
@@ -67,7 +66,6 @@ class HostedGamesService:
     
     @staticmethod
     def get_welcome_message():
-        """Get standardized welcome message"""
         return (
             "🎉 Welcome to BookLiao Bot! \n"
             "Nice to meet you! This bot helps NUS students organise or join casual sports games — anytime, anywhere. \n\n"

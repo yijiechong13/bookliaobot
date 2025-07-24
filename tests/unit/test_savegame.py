@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from savegame import GameDatabase
+from bot.services.database import GameDatabase
 from telegram.ext import ContextTypes
 import os
 

@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from utils import *
-from constants import *
+from utils.constants import *
 from firebase_admin import firestore
 from dotenv import load_dotenv
 import logging

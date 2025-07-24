@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 from telegram import Chat, User
 from telegram.constants import ChatMemberStatus
-from membertracking import (
+from bot.handlers.membertracking import (
     track_new_members,
     track_left_members,
     track_chat_member_updates,

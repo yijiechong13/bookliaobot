@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from telethon_service import TelethonService
+from bot.services.telethon_service import TelethonService
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest, LeaveChannelRequest
 from telethon.tl.functions.messages import ExportChatInviteRequest
 

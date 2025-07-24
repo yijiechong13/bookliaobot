@@ -26,11 +26,12 @@ from .createagame import (
 
 from .joingamehandlers import (
     join_game,
-    show_filter_menu,
-    save_preferences,
-    clear_filters,
     back_to_filters,
-    handle_filter_selection,
+    handle_filter_selection
+)
+
+from .game_filters import (
+    show_filter_menu,
     show_filter_options,
     filter_sport,
     filter_skill,
@@ -39,10 +40,14 @@ from .joingamehandlers import (
     filter_venue,
     toggle_filter,
     apply_filters,
-    save_text_filter,
     show_results,
     handle_navigation,
     join_selected_game
+)
+
+from .user_preferences import (
+    save_preferences,
+    clear_filters
 )
 
 from .membertracking import (
@@ -99,12 +104,11 @@ __all__ = [
     'filter_venue',
     'toggle_filter',
     'apply_filters',
-    'save_text_filter',
     'show_results',
     'handle_navigation',
-    'join_selected_game'
-
-    #Member tracking 
+    'join_selected_game',
+    
+    # Member tracking 
     'track_new_members',
     'track_left_members',
     'track_chat_member_updates',

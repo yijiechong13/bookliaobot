@@ -2,4 +2,4 @@ venv/
 .env
 .firebasekey.json
 
-__pycache__/ 
+__pycache__/ bot_session.session*

@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from telegram import Update, ChatMemberUpdated, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatMemberStatus
 from dotenv import load_dotenv
+from utils import GroupIdHelper, DateTimeHelper, ValidationHelper
 
 load_dotenv()
 
@@ -12,7 +13,7 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         chat_id = update.message.chat.id
-        new_members = update.message.new_chat_members #returns a list 
+        new_members = update.message.new_chat_members
         
         # Log the actual chat_id for debugging
         print(f"🔍 New members in chat_id: {chat_id}")
@@ -165,21 +166,15 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
         import traceback
         traceback.print_exc()
 
-# Keep your existing helper functions
 async def get_game_by_group_id(db, group_id):
     try:
         games_ref = db.db.collection("game")
         
-        # Convert supergroup ID back to stored format if needed
-        search_group_id = group_id
-        if isinstance(group_id, int) and group_id < -1000000000000:
-            # This is a supergroup ID, convert back to stored format
-            search_group_id = str(abs(group_id + 1000000000000))
-            print(f"🔄 Converted supergroup ID {group_id} to stored format: {search_group_id}")
-        else:
-            search_group_id = str(group_id)
+        # Use GroupIdHelper to normalize the group ID for search
+        search_group_id = GroupIdHelper.get_search_group_id(group_id)
+        GroupIdHelper.log_group_conversion(group_id, search_group_id, "search")
         
-        print(f"🔍 Searching for game with group_id: {search_group_id}")
+        print(f"🔍 Searching for game with normalized group_id: {search_group_id}")
         
         query = games_ref.where(filter=db.firestore.FieldFilter("group_id", "==", search_group_id))
         results = list(query.stream())
@@ -252,23 +247,19 @@ async def update_member_count(context: ContextTypes.DEFAULT_TYPE, game_data, cou
         traceback.print_exc()
 
 async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, game_data, member_count, announcement_msg_id):
-    # Keep your existing announcement update logic
     try:
         ANNOUNCEMENT_CHANNEL = os.getenv("ANNOUNCEMENT_CHANNEL")
         
         if not ANNOUNCEMENT_CHANNEL:
             print("❌ No announcement channel configured")
             return False
-            
-        # Ensure we have required data
-        required_fields = ['sport', 'date', 'time_display', 'venue', 'skill', 'group_link']
-        missing_fields = [field for field in required_fields if field not in game_data]
         
-        if missing_fields:
-            print(f"❌ Missing required game data fields: {missing_fields}")
-            print(f"Available fields: {list(game_data.keys())}")
+        # Use ValidationHelper to validate game data
+        is_valid, errors = ValidationHelper.validate_game_data(game_data)
+        if not is_valid:
+            print(f"❌ Game data validation failed: {errors}")
             return False
-            
+        
         # Format announcement text
         announcement_text = (
             f"🏟️ New {game_data['sport']} Game!\n\n"
@@ -290,10 +281,10 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
         try:
             await context.bot.edit_message_text(
                 chat_id=ANNOUNCEMENT_CHANNEL,
-                message_id=int(announcement_msg_id),  # Ensure it's an integer
+                message_id=int(announcement_msg_id),
                 text=announcement_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode=None  # Explicitly set parse mode
+                parse_mode=None
             )
             print(f"✅ Successfully updated announcement message")
             return True
@@ -304,7 +295,6 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
             # Check if it's a "message not found" error
             if "message not found" in str(edit_error).lower():
                 print("⚠️ Message not found - it may have been deleted")
-                # Optionally, you could create a new announcement message here
                 
             elif "message is not modified" in str(edit_error).lower():
                 print("ℹ️ Message content is identical, no update needed")
@@ -331,35 +321,43 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
 
 async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
     try:
-        # Ensure group_id is an integer for the API call
-        if isinstance(group_id, str):
-            group_id = int(group_id)
-
-       # Correct supergroup ID formatting
-        if group_id > 0:  # If positive, assume it's a regular group ID
-            group_id = -1000000000000 - group_id  # Correct supergroup format
+        # Use GroupIdHelper to convert to proper Telegram format
+        telegram_group_id = GroupIdHelper.to_telegram_format(group_id)
+        GroupIdHelper.log_group_conversion(group_id, telegram_group_id, "telegram_format")
         
-        print(f"🔍 Getting member count for group_id: {group_id}")
+        print(f"🔍 Getting member count for telegram group_id: {telegram_group_id}")
         
-        # Check if the chat exists and bot has access
+        # First, verify chat access
         try:
-            chat_info = await context.bot.get_chat(group_id)
-            print(f"✅ Chat found: {chat_info.title} (Type: {chat_info.type})")
+            chat_info = await context.bot.get_chat(telegram_group_id)
+            print(f"✅ Chat accessible: {chat_info.title}")
         except Exception as e:
-            print(f"❌ Cannot access chat {group_id}: {e}")
-            return 1  # Default to 1 if chat is not accessible
+            print(f"❌ Cannot access chat {telegram_group_id}: {e}")
+            return 1
         
-        chat_member_count = await context.bot.get_chat_member_count(group_id)
-        print(f"📊 Total members in chat {group_id}: {chat_member_count}")
+        # Get total member count
+        total_count = await context.bot.get_chat_member_count(telegram_group_id)
+        print(f"📊 Total chat members: {total_count}")
         
-        # Subtract at least 1 for the bot, minimum 1 for host
-        actual_count = max(1, chat_member_count - 1)
-        print(f"📊 Calculated member count (excluding bot): {actual_count}")
-        
-        return actual_count
-        
+        # Try to get more accurate count by checking administrators
+        try:
+            admins = await context.bot.get_chat_administrators(telegram_group_id)
+            bot_count = sum(1 for admin in admins if admin.user.is_bot)
+            print(f"🤖 Bot administrators found: {bot_count}")
+            
+            # Subtract bots, ensure minimum of 1
+            actual_count = max(1, total_count - bot_count)
+            print(f"📊 Calculated member count: {actual_count}")
+            
+            return actual_count
+            
+        except Exception as admin_error:
+            print(f"⚠️ Could not get admin list: {admin_error}")
+            # Fallback: subtract 1 for the bot
+            return max(1, total_count - 1)
+            
     except Exception as e:
-        print(f"❌ Error getting actual member count for {group_id}: {e}")
+        print(f"❌ Error getting member count for {group_id}: {e}")
         return 1
 
 async def sync_member_count(context: ContextTypes.DEFAULT_TYPE, game_data):
@@ -517,51 +515,3 @@ async def periodic_member_sync(context):
             
     except Exception as e:
         print(f"❌ Error in periodic member sync: {e}")
-
-# Also update your get_actual_member_count function with better error handling
-async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
-    try:
-        # Ensure group_id is properly formatted
-        if isinstance(group_id, str):
-            if group_id.startswith('-'):
-                group_id = int(group_id)
-            else:
-                # Convert stored format to supergroup format
-                group_id = -1000000000000 - int(group_id)
-        elif isinstance(group_id, int) and group_id > 0:
-            group_id = -1000000000000 - group_id
-        
-        print(f"🔍 Getting member count for group_id: {group_id}")
-        
-        # First, verify chat access
-        try:
-            chat_info = await context.bot.get_chat(group_id)
-            print(f"✅ Chat accessible: {chat_info.title}")
-        except Exception as e:
-            print(f"❌ Cannot access chat {group_id}: {e}")
-            return 1
-        
-        # Get total member count
-        total_count = await context.bot.get_chat_member_count(group_id)
-        print(f"📊 Total chat members: {total_count}")
-        
-        # Try to get more accurate count by checking administrators
-        try:
-            admins = await context.bot.get_chat_administrators(group_id)
-            bot_count = sum(1 for admin in admins if admin.user.is_bot)
-            print(f"🤖 Bot administrators found: {bot_count}")
-            
-            # Subtract bots, ensure minimum of 1
-            actual_count = max(1, total_count - bot_count)
-            print(f"📊 Calculated member count: {actual_count}")
-            
-            return actual_count
-            
-        except Exception as admin_error:
-            print(f"⚠️ Could not get admin list: {admin_error}")
-            # Fallback: subtract 1 for the bot
-            return max(1, total_count - 1)
-            
-    except Exception as e:
-        print(f"❌ Error getting member count for {group_id}: {e}")
-        return 1 

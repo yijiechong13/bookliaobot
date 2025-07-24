@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from utils import validate_date_format, parse_time_input
 from telethon_service import telethon_service
-from config import *
+from constants import *
 from fuzzywuzzy import process
 
 load_dotenv() 
@@ -66,21 +66,8 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data.pop("booking_msg_id", None)
         context.user_data.pop("booking_chat_id", None)
         
-        sports = [
-    ("⚽ Football", "Football"),
-    ("🏀 Basketball", "Basketball"),
-    ("🎾 Tennis", "Tennis"),
-    ("🏐 Volleyball", "Volleyball"),
-    ("🏸 Badminton", "Badminton"),
-    ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
-    ("🏑 Floorball", "Floorball"),
-    ("🏓 Table Tennis", "Table Tennis"),
-    ("🏉 Touch Rugby", "Touch Rugby")
-]
+        keyboard = [[InlineKeyboardButton(text, callback_data=data)] for text, data in SPORTS_LIST]
         
-        keyboard = [[InlineKeyboardButton(text, callback_data=data)] for text, data in sports]
-        
-
         await query.edit_message_text(
             "Which sport are you hosting?",
             reply_markup=InlineKeyboardMarkup(keyboard)
@@ -91,8 +78,8 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
         print("✅ venue_no clicked")
         
         booking_keyboard = [
-            [InlineKeyboardButton("🏫 NUS Facilities", url="https://reboks.nus.edu.sg/nus_public_web/public/facilities")],
-            [InlineKeyboardButton("🏟️ ActiveSG Courts", url="https://activesg.gov.sg/activities/list")]
+            [InlineKeyboardButton("🏫 NUS Facilities", url=BOOKING_URLS['NUS_FACILITIES'])],
+            [InlineKeyboardButton("🏟️ ActiveSG Courts", url=BOOKING_URLS['ACTIVESG'])]
         ]
         booking_msg = await query.edit_message_text(
             "Please book your facility using one of the links below:",
@@ -101,7 +88,6 @@ async def handle_venue_response(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data["booking_msg_id"] = booking_msg.message_id
         context.user_data["booking_chat_id"] = booking_msg.chat_id
 
-       
         done_keyboard = [[InlineKeyboardButton("✅ Done Booking", callback_data="done_booking")]]
         await query.message.reply_text(
             "Once you're done with the booking, tap the button below to continue:",
@@ -125,25 +111,13 @@ async def after_booking (update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"Couldn't delete message: {e}")
     
-    
+    # Clear the booking message data
     context.user_data.pop("booking_msg_id", None)
     context.user_data.pop("booking_chat_id", None)
     
     if context.user_data.get("auto_create_group"):
-        sports = [
-            ("⚽ Football", "Football"),
-            ("🏀 Basketball", "Basketball"),
-            ("🎾 Tennis", "Tennis"),
-            ("🏐 Volleyball", "Volleyball"),
-            ("🏸 Badminton", "Badminton"),
-            ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
-            ("🏑 Floorball", "Floorball"),
-            ("🏓 Table Tennis", "Table Tennis"),
-            ("🏉 Touch Rugby", "Touch Rugby")
-        ]
-        
         keyboard = []
-        for text, data in sports:
+        for text, data in SPORTS_LIST:
             keyboard.append([InlineKeyboardButton(str(text), callback_data=str(data))])
 
         await query.message.reply_text(
@@ -179,9 +153,7 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time_data, error = parse_time_input(user_input)
     
     if error:
-        await update.message.reply_text(
-            error
-        )
+        await update.message.reply_text(error)
         return TIME
     
     context.user_data["time_display"] = time_data["display_format"]
@@ -191,50 +163,6 @@ async def time_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text("Enter the venue/location:")
     return VENUE
-    
-VENUES = {
-    "Raffles Hall": ["RH", "Raffles"],
-    "Kent Ridge Hall": ["KRH", "Kent Ridge"],
-    "Temasek Hall": ["TH", "Temasek"],
-    "Eusoff Hall": ["EH", "Eusoff"],
-    "Sheares Hall": ["SH", "Sheares"],
-    "King Edward VII Hall": ["KEVII", "KE7", "King Edward"],
-    "Ridge View Residential College": ["RVRC", "Ridge View"],
-    "Cinnamon College": ["Cinnamon", "USC College"],
-    "Tembusu College": ["Tembusu", "RC4"],
-    "College of Alice & Peter Tan": ["CAPT", "Alice Peter"],
-    "Residential College 4": ["RC4"],
-    "University Town Sports Hall": ["UTSH", "UTown"],
-    
-    # ActiveSG Facilities
-    "Jurong East Sports Centre": ["JESC", "Jurong East", "JE Sports"],
-    "Queenstown Sports Centre": ["QTSC", "Queenstown", "Queenstown Sports"],
-    "Bishan Sports Hall": ["BSH", "Bishan", "Bishan Sports"],
-    "Toa Payoh Sports Hall": ["TPSH", "Toa Payoh", "TP Sports"],
-    "Bedok Sports Centre": ["BSC", "Bedok", "Bedok Sports"],
-    "Pasir Ris Sports Centre": ["PRSC", "Pasir Ris", "PR Sports"],
-    "Tampines Sports Centre": ["TSC", "Tampines", "Tampines Sports"],
-    "Serangoon Sports Centre": ["SSC", "Serangoon", "Serangoon Sports"],
-    "Clementi Sports Centre": ["CSC", "Clementi", "Clementi Sports"],
-    "Bukit Gombak Sports Centre": ["BGSC", "Bukit Gombak", "BG Sports"],
-    "Yio Chu Kang Sports Centre": ["YCKSC", "YCK", "Yio Chu Kang"],
-    "Sengkang Sports Centre": ["SKSC", "Sengkang", "SK Sports"],
-    "Hougang Sports Centre": ["HSC", "Hougang", "Hougang Sports"],
-    "Woodlands Sports Centre": ["WSC", "Woodlands", "Woodlands Sports"],
-    "Choa Chu Kang Sports Centre": ["CCKSC", "CCK", "Choa Chu Kang"],
-    "Yishun Sports Centre": ["YSC", "Yishun", "Yishun Sports"],
-    "Kallang Tennis Centre": ["KTC", "Kallang Tennis"],
-    "Kallang Squash Centre": ["KSC", "Kallang Squash"],
-    "Jalan Besar Stadium": ["JBS", "Jalan Besar"],
-    "Our Tampines Hub": ["OTH", "Tampines Hub"],
-    "OCBC Arena": ["OCBC", "Sports Hub Arena"],
-    "Singapore Sports Hub": ["SSH", "Sports Hub", "National Stadium"],
-    
-    # Other Public Facilities
-    "Farrer Park Swimming Complex": ["Farrer Park", "Farrer Pool"],
-    "Queenstown Swimming Complex": ["Queenstown Pool", "QT Pool"],
-    "Jalan Besar Swimming Complex": ["Jalan Besar Pool", "JB Pool"]
-}
 
 async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text.strip()
@@ -271,7 +199,7 @@ async def venue_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # If no matches from the list, proceed with original venue
     await update.message.reply_text(
-        "Could not find any similar venues.Please check your spelling and try again."
+        "Could not find any similar venues. Please check your spelling and try again."
     )
     return VENUE
 
@@ -314,9 +242,7 @@ async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = update.callback_query.message
 
     keyboard = [
-        [InlineKeyboardButton("Beginner", callback_data="Beginner")],
-        [InlineKeyboardButton("Intermediate", callback_data="Intermediate")],
-        [InlineKeyboardButton("Advanced", callback_data="Advanced")]
+        [InlineKeyboardButton(skill, callback_data=skill)] for skill in SKILL_LEVELS
     ]
 
     await context.bot.send_message(

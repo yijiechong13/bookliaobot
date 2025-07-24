@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from utils import *
-from config import *
+from constants import *
 from firebase_admin import firestore
 from dotenv import load_dotenv
 import logging
@@ -11,26 +11,6 @@ import datetime
 load_dotenv()
 
 db = None
-
-# Predefined sports list
-SPORTS_LIST = [
-    ("⚽ Football", "Football"),
-    ("🏀 Basketball", "Basketball"),
-    ("🎾 Tennis", "Tennis"),
-    ("🏐 Volleyball", "Volleyball"),
-    ("🏸 Badminton", "Badminton"),
-    ("🥏 Ultimate Frisbee", "Ultimate Frisbee"),
-    ("🏑 Floorball", "Floorball"),
-    ("🏓 Table Tennis", "Table Tennis"),
-    ("🏉 Touch Rugby", "Touch Rugby")
-]
-
-# Predefined skill levels
-SKILL_LEVELS = [
-    ("Beginner", "Beginner"),
-    ("Intermediate", "Intermediate"),
-    ("Advanced", "Advanced"),
-]
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db = context.bot_data['db']
@@ -79,7 +59,6 @@ async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFA
             [InlineKeyboardButton(text, callback_data=data)]
             for text, data in buttons
         ]
-
 
         keyboard.append([
     InlineKeyboardButton("🧹 Clear All", callback_data="clear_filters"),
@@ -202,7 +181,6 @@ async def handle_filter_selection(update: Update, context: ContextTypes.DEFAULT_
     filter_type = query.data.split('_')[1]
     return await show_filter_options(update, context, filter_type)
 
-
 async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE, filter_type:str):
 
     if filter_type == 'time':
@@ -260,7 +238,6 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
                 callback_data=f"toggle_filter_{filter_type}_{opt.lower()}"
             )])
         
-
         keyboard.append([
             InlineKeyboardButton("🧹 Clear Filters", callback_data=f"clear_{filter_type}_filters"),
             InlineKeyboardButton("🔙 Back", callback_data="back_to_filters"),
@@ -275,7 +252,6 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
                 reply_markup=new_markup
             )
     
-    
     except telegram.error.BadRequest as e:
         if "not modified" in str(e):
             pass
@@ -287,7 +263,6 @@ async def show_filter_options(update: Update,context: ContextTypes.DEFAULT_TYPE,
             SETTING_DATE if filter_type == 'date' else
             SETTING_TIME if filter_type == 'time' else
             SETTING_VENUE)
-
 
 async def filter_sport(update: Update,context: ContextTypes.DEFAULT_TYPE):
     return await show_filter_options(update, context, 'sport')
@@ -355,7 +330,6 @@ async def filter_time(update: Update,context: ContextTypes.DEFAULT_TYPE):
 
 async def filter_venue(update: Update,context: ContextTypes.DEFAULT_TYPE):
     return await show_filter_options(update, context, 'venue')
-
 
 async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -442,7 +416,6 @@ async def apply_filters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error apply filters: {str(e)}")
         await query.edit_message_text("❌ Failed to apply filters. Please try again.")
         return await show_filter_menu (update, "🔍 Filter games by:", context)
-
 
 async def save_text_filter(update: Update, context: ContextTypes.DEFAULT_TYPE, filter_key: str, filter_value: str) -> int:
     if filter_value.lower() != '/skip':
@@ -638,18 +611,12 @@ async def join_selected_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not game.get('id'):
         await query.edit_message_text("Invalid game selected")
         return BROWSE_GAMES
-    
-
-    #if len(game.get('players', [])) >= game.get('max_players', 10):
-    #    await query.edit_message_text(" This game is already full")
-    #    return BROWSE_GAMES
 
     game_ref = db.db.collection("game").document(game['id'])
 
     if update._effective_user.id in game.get('players_list', []):
         await query.edit_message_text("You've already joined this game")
         return BROWSE_GAMES
-
 
     await query.edit_message_text(
         f"✅ Click the link below to join the {game.get('sport')} game! \n"

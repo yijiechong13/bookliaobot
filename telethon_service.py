@@ -6,6 +6,7 @@ from telethon.tl.types import ChatAdminRights, ChatBannedRights
 from telethon.tl.functions.messages import EditChatDefaultBannedRightsRequest
 from dotenv import load_dotenv
 import logging
+from constants import SPORT_EMOJIS  # ✅ Import from constants instead of duplicating
 
 load_dotenv()
 
@@ -41,22 +42,10 @@ class TelethonService:
         if not self.client:
             await self.initialize()
 
-        SPORT_EMOJIS = {
-    "football": "⚽",
-    "basketball": "🏀",
-    "tennis": "🎾",
-    "volleyball": "🏐",
-    "badminton": "🏸",
-    "ultimate frisbee": "🥏",
-    "floorball": "🏑",
-    "table tennis": "🏓",
-    "touch rugby": "🏉"
-}
-            
         try:
             sport = game_data["sport"]
             sport_key = sport.lower()
-            emoji = SPORT_EMOJIS.get(sport_key, "🏅")  # fallback if not found
+            emoji = SPORT_EMOJIS.get(sport_key, "🏅")  
 
             venue = game_data["venue"].title()
             date = game_data["date"]
@@ -197,4 +186,4 @@ class TelethonService:
             await self.client.disconnect()
 
 # Global instance
-telethon_service = TelethonService() 
+telethon_service = TelethonService()

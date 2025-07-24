@@ -1,127 +1,111 @@
-
 from datetime import datetime, timedelta
 import pytz
 from telegram.ext import ContextTypes
 from firebase_admin import firestore
+from utils import DateTimeHelper, GroupIdHelper, ValidationHelper
 
 class ReminderService: 
     def __init__(self, db):
         self.db = db 
-        self.sg_tz = pytz.timezone("Asia/Singapore")
+        self.sg_tz = DateTimeHelper.get_singapore_timezone()
 
     async def schedule_game_reminders(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id): 
         try:
-            game_datetime = await self.game_start_datetime(game_data)
+            game_datetime = self._get_game_start_datetime(game_data)
             if not game_datetime:
                 print(f"❌ Could not parse game datetime for game {game_id}")
                 return
 
-            now = datetime.now(self.sg_tz)
+            now = DateTimeHelper.get_current_singapore_time()
             
             # Calculate exact reminder times
-            reminder_24h_time = game_datetime - timedelta(hours=24)
-            reminder_2h_time = game_datetime - timedelta(hours=2)
+            reminder_times = {
+                '24h': game_datetime - timedelta(hours=24),
+                '2h': game_datetime - timedelta(hours=2)
+            }
             
-            # Schedule 24-hour reminder if it's in the future
-            if reminder_24h_time > now:
-                job_name = f"reminder_24h_{game_id}"
-                
-                # Remove existing job if it exists
-                current_jobs = context.job_queue.get_jobs_by_name(job_name)
-                for job in current_jobs:
-                    job.schedule_removal()
-                
-                context.job_queue.run_once(
-                    callback=self.send_24h_reminder_job,
-                    when=reminder_24h_time,
-                    data={'game_id': game_id, 'game_data': game_data},
-                    name=job_name
+            # Schedule reminders
+            for period, reminder_time in reminder_times.items():
+                await self._schedule_single_reminder(
+                    context, game_id, game_data, period, reminder_time, now
                 )
-                print(f"✅ Scheduled 24h reminder for game {game_id} at {reminder_24h_time}")
-            else:
-                print(f"⚠️ 24h reminder time has passed for game {game_id}")
-
-            # Schedule 2-hour reminder if it's in the future
-            if reminder_2h_time > now:
-                job_name = f"reminder_2h_{game_id}"
-                
-                # Remove existing job if it exists
-                current_jobs = context.job_queue.get_jobs_by_name(job_name)
-                for job in current_jobs:
-                    job.schedule_removal()
-                
-                context.job_queue.run_once(
-                    callback=self.send_2h_reminder_job,
-                    when=reminder_2h_time,
-                    data={'game_id': game_id, 'game_data': game_data},
-                    name=job_name
-                )
-                print(f"✅ Scheduled 2h reminder for game {game_id} at {reminder_2h_time}")
-            else:
-                print(f"⚠️ 2h reminder time has passed for game {game_id}")
                 
         except Exception as e:
             print(f"❌ Error scheduling reminders for game {game_id}: {e}")
 
+    async def _schedule_single_reminder(self, context, game_id, game_data, period, reminder_time, now):
+        if reminder_time > now:
+            job_name = f"reminder_{period}_{game_id}"
+            callback_method = getattr(self, f"send_{period}_reminder_job")
+            
+            # Remove existing job if it exists
+            self._remove_existing_jobs(context, job_name)
+            
+            context.job_queue.run_once(
+                callback=callback_method,
+                when=reminder_time,
+                data={'game_id': game_id, 'game_data': game_data},
+                name=job_name
+            )
+            print(f"✅ Scheduled {period} reminder for game {game_id} at {reminder_time}")
+        else:
+            print(f"⚠️ {period} reminder time has passed for game {game_id}")
+
+    def _remove_existing_jobs(self, context, job_name):
+        current_jobs = context.job_queue.get_jobs_by_name(job_name)
+        for job in current_jobs:
+            job.schedule_removal()
+
     async def send_24h_reminder_job(self, context: ContextTypes.DEFAULT_TYPE):
-        try:
-            job_data = context.job.data
-            game_id = job_data['game_id']
-            game_data = job_data['game_data']
-            
-            # Get fresh game data to check if game is still active
-            game_ref = self.db.db.collection("game").document(game_id)
-            game_doc = game_ref.get()
-            
-            if not game_doc.exists:
-                print(f"⚠️ Game {game_id} no longer exists")
-                return
-                
-            current_game_data = game_doc.to_dict()
-            
-            # Check if game is still open and reminder hasn't been sent
-            if current_game_data.get('status') != 'open':
-                print(f"⚠️ Game {game_id} is no longer open")
-                return
-                
-            if current_game_data.get('reminder_24h_sent', False):
-                print(f"⚠️ 24h reminder already sent for game {game_id}")
-                return
-            
-            await self.send_24h_reminder(context, current_game_data, game_id)
-            
-        except Exception as e:
-            print(f"❌ Error in 24h reminder job: {e}")
+        await self._send_reminder_job(context, '24h', self.send_24h_reminder)
 
     async def send_2h_reminder_job(self, context: ContextTypes.DEFAULT_TYPE):
+        await self._send_reminder_job(context, '2h', self.send_2h_reminder)
+
+    async def _send_reminder_job(self, context, period, reminder_method):
         try:
             job_data = context.job.data
             game_id = job_data['game_id']
-            game_data = job_data['game_data']
             
-            # Get fresh game data to check if game is still active
+            # Get fresh game data
+            current_game_data = self._get_current_game_data(game_id)
+            if not current_game_data:
+                return
+                
+            # Check if reminder should be sent
+            if not self._should_send_reminder(current_game_data, game_id, period):
+                return
+            
+            await reminder_method(context, current_game_data, game_id)
+            
+        except Exception as e:
+            print(f"❌ Error in {period} reminder job: {e}")
+
+    def _get_current_game_data(self, game_id):
+        try:
             game_ref = self.db.db.collection("game").document(game_id)
             game_doc = game_ref.get()
             
             if not game_doc.exists:
                 print(f"⚠️ Game {game_id} no longer exists")
-                return
+                return None
                 
-            current_game_data = game_doc.to_dict()
-            
-            # Check if game is still open and reminder hasn't been sent
-            if current_game_data.get('status') != 'open':
-                print(f"⚠️ Game {game_id} is no longer open")
-                return
-                
-            if current_game_data.get('reminder_2h_sent', False):
-                print(f"⚠️ 2h reminder already sent for game {game_id}")
-                return
-            
-            await self.send_2h_reminder(context, current_game_data, game_id)
-            
+            return game_doc.to_dict()
         except Exception as e:
-            print(f"❌ Error in 2h reminder job: {e}")
+            print(f"❌ Error fetching game data for {game_id}: {e}")
+            return None
+
+    def _should_send_reminder(self, game_data, game_id, period):
+        if game_data.get('status') != 'open':
+            print(f"⚠️ Game {game_id} is no longer open")
+            return False
+            
+        reminder_field = f'reminder_{period}_sent'
+        if game_data.get(reminder_field, False):
+            print(f"⚠️ {period} reminder already sent for game {game_id}")
+            return False
+            
+        return True
 
     async def schedule_all_existing_reminders(self, context: ContextTypes.DEFAULT_TYPE):
         try:
@@ -136,158 +120,157 @@ class ReminderService:
                 game_id = game_doc.id
                 
                 # Only schedule if reminders haven't been sent yet
-                if not game_data.get('reminder_24h_sent', False) or not game_data.get('reminder_2h_sent', False):
+                if self._needs_reminder_scheduling(game_data):
                     await self.schedule_game_reminders(context, game_data, game_id)
                     scheduled_count += 1
             
-            if scheduled_count > 0:
-                print(f"✅ Scheduled reminders for {scheduled_count} existing games")
-            else:
-                print("📋 No existing games need reminder scheduling")
+            self._log_scheduling_result(scheduled_count)
                 
         except Exception as e:
             print(f"❌ Error scheduling existing reminders: {e}")
 
+    def _needs_reminder_scheduling(self, game_data):
+        return (not game_data.get('reminder_24h_sent', False) or 
+                not game_data.get('reminder_2h_sent', False))
+
+    def _log_scheduling_result(self, scheduled_count):
+        if scheduled_count > 0:
+            print(f"✅ Scheduled reminders for {scheduled_count} existing games")
+        else:
+            print("📋 No existing games need reminder scheduling")
+
     async def cancel_game_reminders(self, context: ContextTypes.DEFAULT_TYPE, game_id):
         try:
-            # Cancel 24h reminder
-            job_name_24h = f"reminder_24h_{game_id}"
-            jobs_24h = context.job_queue.get_jobs_by_name(job_name_24h)
-            for job in jobs_24h:
-                job.schedule_removal()
+            reminder_periods = ['24h', '2h']
+            jobs_cancelled = False
             
-            # Cancel 2h reminder
-            job_name_2h = f"reminder_2h_{game_id}"
-            jobs_2h = context.job_queue.get_jobs_by_name(job_name_2h)
-            for job in jobs_2h:
-                job.schedule_removal()
+            for period in reminder_periods:
+                job_name = f"reminder_{period}_{game_id}"
+                jobs = context.job_queue.get_jobs_by_name(job_name)
+                if jobs:
+                    for job in jobs:
+                        job.schedule_removal()
+                    jobs_cancelled = True
                 
-            if jobs_24h or jobs_2h:
+            if jobs_cancelled:
                 print(f"✅ Cancelled reminders for game {game_id}")
             
         except Exception as e:
             print(f"❌ Error cancelling reminders for game {game_id}: {e}")
 
-    async def game_start_datetime(self, game_data):  
+    def _get_game_start_datetime(self, game_data):
+        return DateTimeHelper.parse_game_datetime(
+            game_data.get("date"), 
+            game_data.get("start_time_24")
+        )
+
+    async def _send_reminder_message(self, context, game_data, game_id, reminder_config):
         try:
-            date_str = game_data.get("date")
-            start_time_24 = game_data.get("start_time_24")
+            # Get and validate chat ID using utility function
+            chat_id = self._get_validated_chat_id(game_data)
+            if not chat_id:
+                return False
 
-            if not date_str or not start_time_24:
-                print(f"❌ Missing date or start_time_24 in game data")
-                return None
+            # Send reminder text
+            await context.bot.send_message(
+                chat_id=chat_id,  
+                text=reminder_config['text'],
+                parse_mode='Markdown'
+            )
 
-            day, month, year = map(int, date_str.split("/"))
-            start_hour, start_min = map(int, start_time_24.split(":"))
+            # Send poll if configured
+            if reminder_config.get('send_poll', False):
+                await self._send_attendance_poll(context, chat_id, game_data)
 
-            game_datetime = datetime(year, month, day, start_hour, start_min)
-            game_datetime = self.sg_tz.localize(game_datetime)
-
-            return game_datetime
+            # Mark reminder as sent
+            self.db.update_game(game_id, {reminder_config['db_field']: True})
+            print(f"✅ Sent {reminder_config['period']} reminder for game {game_id} to group {chat_id}")
+            return True
         
-        except Exception as e: 
-            print(f"❌ Error parsing game datetime: {e}")
+        except Exception as e:
+            print(f"🚨 Unexpected error sending {reminder_config['period']} reminder: {e}")
+            return False
+
+    def _get_validated_chat_id(self, game_data):
+        group_id = game_data.get('group_id')
+        if not group_id:
+            print("❌ No group_id in game data")
             return None
 
-    async def send_24h_reminder(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id):
         try:
-            group_id = game_data.get('group_id')
-            if not group_id:
-                print("❌ No group_id in game data")
-                return
+            # Use utility function to convert to telegram format
+            telegram_id = GroupIdHelper.to_telegram_format(group_id)
+            chat_id = str(telegram_id)
+            return chat_id
+        except (ValueError, TypeError) as e:
+            print(f"❌ Invalid group_id format: {group_id} - {e}")
+            return None
 
-            try:
-                # Supergroup starts with -100 
-                chat_id = f"-100{abs(int(group_id))}"
-            except (ValueError, TypeError) as e:
-                print(f"❌ Invalid group_id format: {group_id} - {e}")
-                return
+    async def _send_attendance_poll(self, context, chat_id, game_data):
+        poll_question = f"Can you make it for tomorrow's {game_data['sport']} game?"
+        poll_options = ["✅ Yes, I can make it!", "❌ No, I cannot make it"]
 
-            # Create reminder message
-            reminder_text = (
+        poll_message = await context.bot.send_poll(
+            chat_id=chat_id,
+            question=poll_question,
+            options=poll_options,
+            is_anonymous=False,
+            allows_multiple_answers=False,
+            close_date=None
+        ) 
+
+        # Pin the message 
+        try: 
+            await context.bot.pin_chat_message(
+                chat_id=chat_id,
+                message_id=poll_message.message_id,
+                disable_notification=True
+            )
+            print(f"✅ Poll pinned in group {chat_id}")
+        except Exception as pin_error:
+            print(f"⚠️ Could not pin poll: {pin_error}")
+
+    def _create_reminder_text(self, game_data, reminder_type):
+        common_info = (
+            f"📅 **{'Today' if reminder_type == '2h' else 'Date'}:** {game_data['date']}\n"
+            f"🕒 **Time:** {game_data['time_display']}\n"
+            f"📍 **Venue:** {game_data['venue']}\n"
+            f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
+        )
+        
+        if reminder_type == '24h':
+            header = (
                 f"⏰ **24-Hour Game Reminder!** ⏰\n\n"
                 f"**{game_data['sport']}** game is **tomorrow**!\n\n"
-                f"📅 **Date:** {game_data['date']}\n"
-                f"🕒 **Time:** {game_data['time_display']}\n"
-                f"📍 **Venue:** {game_data['venue']}\n"
-                f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
-                f"See you tomorrow! 🎉"
             )
-            
-            await context.bot.send_message(
-                chat_id=chat_id,  
-                text=reminder_text,
-                parse_mode='Markdown'
-            )
-
-            # Send attendance poll 
-            poll_question = f"Can you make it for tomorrow's {game_data['sport']} game?"
-            poll_options = ["✅ Yes, I can make it!", "❌ No, I cannot make it"]
-
-            poll_message = await context.bot.send_poll(
-                chat_id=chat_id,
-                question=poll_question,
-                options=poll_options,
-                is_anonymous=False,  # Show who voted for what
-                allows_multiple_answers=False,  # Only one answer per person
-                close_date=None  # Poll stays open indefinitely
-            ) 
-
-            # Pin the message 
-            try: 
-                await context.bot.pin_chat_message(
-                    chat_id=chat_id,
-                    message_id=poll_message.message_id,
-                    disable_notification=True
-                )
-                print(f"✅ Poll pinned in group {chat_id}")
-
-            except Exception as pin_error:
-                print(f"⚠️ Could not pin poll: {pin_error}")
-
-            # Mark reminder as sent in database
-            self.db.update_game(game_id, {"reminder_24h_sent": True})
-            print(f"✅ Sent 24h reminder for game {game_id} to group {chat_id}")
-        
-        except Exception as e:
-            print(f"🚨 Unexpected error sending 24h reminder: {e}")
-
-    async def send_2h_reminder(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id):
-        try:
-            group_id = game_data.get('group_id')
-            if not group_id:
-                print("❌ No group_id in game data")
-                return
-
-            try:
-                chat_id = f"-100{abs(int(group_id))}"
-            except (ValueError, TypeError) as e:
-                print(f"❌ Invalid group_id format: {group_id} - {e}")
-                return
-
-            reminder_text = (
+            footer = "See you tomorrow! 🎉"
+        else:  # 2h
+            header = (
                 f"🚨 **2-Hour Game Alert!** 🚨\n\n"
                 f"**{game_data['sport']}** game starts in **2 hours**!\n\n"
-                f"📅 **Today:** {game_data['date']}\n"
-                f"🕒 **Time:** {game_data['time_display']}\n"
-                f"📍 **Venue:** {game_data['venue']}\n"
-                f"📊 **Skill Level:** {game_data['skill'].title()}\n\n"
-                f"Time to get ready! 🏃‍♂️💨"
             )
-            
-            await context.bot.send_message(
-                chat_id=chat_id,  
-                text=reminder_text,
-                parse_mode='Markdown'
-            )
-
-            # Mark reminder as sent in database
-            self.db.update_game(game_id, {"reminder_2h_sent": True})
-            print(f"✅ Sent 2h reminder for game {game_id} to group {chat_id}")
+            footer = "Time to get ready! 🏃‍♂️💨"
         
-        except Exception as e:
-            print(f"🚨 Unexpected error sending 2h reminder: {e}")
+        return header + common_info + footer
 
-    # Legacy method for backward compatibility - now just calls the new scheduling method
+    async def send_24h_reminder(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id):
+        reminder_config = {
+            'text': self._create_reminder_text(game_data, '24h'),
+            'send_poll': True,
+            'db_field': 'reminder_24h_sent',
+            'period': '24h'
+        }
+        await self._send_reminder_message(context, game_data, game_id, reminder_config)
+
+    async def send_2h_reminder(self, context: ContextTypes.DEFAULT_TYPE, game_data, game_id):
+        reminder_config = {
+            'text': self._create_reminder_text(game_data, '2h'),
+            'send_poll': False,
+            'db_field': 'reminder_2h_sent',
+            'period': '2h'
+        }
+        await self._send_reminder_message(context, game_data, game_id, reminder_config)
+
+    # Legacy method for backward compatibility
     async def send_game_reminders(self, context: ContextTypes.DEFAULT_TYPE):
         await self.schedule_all_existing_reminders(context)

@@ -13,13 +13,13 @@ from membertracking import (
     track_new_members, 
     track_left_members, 
     initialize_member_counts,
-    track_all_chat_member_changes,  # New function
-    periodic_member_sync            # New function
+    track_all_chat_member_changes,  
+    periodic_member_sync           
 )
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 from joingamehandlers import *
-from config import * 
+from constants import * 
 from dotenv import load_dotenv
 import os
 load_dotenv()

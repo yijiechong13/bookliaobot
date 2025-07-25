@@ -1,6 +1,19 @@
-
+import pytest
+import sys
+import os
+from unittest.mock import MagicMock
 from freezegun import freeze_time
-from utils import validate_date_format, parse_time_input, is_game_expired, convert_to_24_hour
+
+# Add the project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import the actual utils functions directly from their modules
+# This bypasses the package import issue
+sys.path.insert(0, os.path.join(project_root, 'utils'))
+from bot.utils.validation_helper import validate_date_format, parse_time_input, convert_to_24_hour
+from bot.utils.datetime_helper import is_game_expired
 
 class TestDateValidation:
 
@@ -57,13 +70,13 @@ class TestGameExpiration:
     
     @freeze_time("2025-06-15 02:00:00")  # 10:00 AM Singapore = 02:00 UTC
     def test_game_not_expired(self):
-        is_expired = is_game_expired("15/06/2025", "16:00")
-        assert is_expired is False
+        is_expired_result = is_game_expired("15/06/2025", "16:00")
+        assert is_expired_result is False
     
     @freeze_time("2025-06-15 10:00:00")  # 6:00 PM Singapore = 10:00 UTC  
     def test_game_expired(self):
-        is_expired = is_game_expired("15/06/2025", "16:00")
-        assert is_expired is True
+        is_expired_result = is_game_expired("15/06/2025", "16:00")
+        assert is_expired_result is True
     
 class Test24HourConversion:
     def test_am_pm_conversion(self):

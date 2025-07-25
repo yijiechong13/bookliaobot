@@ -35,6 +35,8 @@ VENUES = {
     "College of Alice & Peter Tan": ["CAPT", "Alice Peter"],
     "Residential College 4": ["RC4"],
     "University Town Sports Hall": ["UTSH", "UTown"],
+    "Multi-Purpose Sports Hall": ["MPSH"],
+    
     
     # ActiveSG Facilities
     "Jurong East Sports Centre": ["JESC", "Jurong East", "JE Sports"],

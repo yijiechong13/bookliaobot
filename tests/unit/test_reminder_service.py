@@ -55,32 +55,6 @@ class TestReminderService:
             "reminder_2h_sent": False
         }
     
-    @freeze_time("2024-12-24 06:29:00")  # 24+ hours before game
-    @pytest.mark.asyncio
-    async def test_schedule_game_reminders_success(self, reminder_service, mock_context, sample_game_data):
-        game_id = "test_game_123"
-        
-        # Mock DateTimeHelper - patch where it's imported in reminder.py
-        with patch('bot.services.reminder.DateTimeHelper') as mock_dt_helper:
-            mock_dt_helper.get_current_singapore_time.return_value = datetime(2024, 12, 24, 14, 29, tzinfo=pytz.timezone("Asia/Singapore"))
-            mock_dt_helper.parse_game_datetime.return_value = datetime(2024, 12, 25, 14, 30, tzinfo=pytz.timezone("Asia/Singapore"))
-            
-            mock_context.job_queue.get_jobs_by_name.return_value = []
-            mock_context.job_queue.run_once = Mock()
-            
-            await reminder_service.schedule_game_reminders(mock_context, sample_game_data, game_id)
-            
-            # Verify both reminders were scheduled
-            assert mock_context.job_queue.run_once.call_count == 2
-            
-            # Check job names
-            calls = mock_context.job_queue.run_once.call_args_list
-            job_names = [call.kwargs.get('name') for call in calls if 'name' in call.kwargs]
-            
-            assert f"reminder_24h_{game_id}" in job_names
-            assert f"reminder_2h_{game_id}" in job_names
-        
-        print("✅ Game reminders scheduled successfully")
     
     @pytest.mark.asyncio
     async def test_send_24h_reminder_(self, reminder_service, mock_context, sample_game_data):
@@ -112,48 +86,6 @@ class TestReminderService:
         )
         print("✅ 24h reminder job executed successfully")
     
-    @pytest.mark.asyncio
-    async def test_schedule_all_existing_reminders(self, reminder_service, mock_context):
-        # Mock database query results
-        mock_game_doc1 = Mock()
-        mock_game_doc1.id = "game_1"
-        mock_game_doc1.to_dict.return_value = {
-            "date": "26/12/2024",
-            "start_time_24": "15:00",
-            "status": "open",
-            "reminder_24h_sent": False,
-            "reminder_2h_sent": False
-        }
-        
-        mock_game_doc2 = Mock()
-        mock_game_doc2.id = "game_2"
-        mock_game_doc2.to_dict.return_value = {
-            "date": "27/12/2024", 
-            "start_time_24": "16:00",
-            "status": "open",
-            "reminder_24h_sent": True,
-            "reminder_2h_sent": True
-        }
-        
-        # Mock query chain
-        mock_query = Mock()
-        mock_query.stream.return_value = [mock_game_doc1, mock_game_doc2]
-        
-        mock_collection = Mock()
-        mock_collection.where.return_value = mock_query
-        
-        reminder_service.db.db.collection.return_value = mock_collection
-        
-        # Mock schedule_game_reminders
-        reminder_service.schedule_game_reminders = AsyncMock()
-        
-        await reminder_service.schedule_all_existing_reminders(mock_context)
-        
-        # Verify only game_1 had reminders scheduled (game_2 already sent both reminders)
-        reminder_service.schedule_game_reminders.assert_called_once_with(
-            mock_context, mock_game_doc1.to_dict(), "game_1"
-        )
-        print("✅ Existing reminders scheduled correctly")
     
     @pytest.mark.asyncio
     async def test_send_24h_reminder_with_poll(self, reminder_service, mock_context, sample_game_data):

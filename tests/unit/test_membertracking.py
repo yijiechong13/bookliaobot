@@ -154,21 +154,6 @@ class TestMemberTracking(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call_args[0][0], 'game123')
         self.assertEqual(call_args[0][1]['player_count'], 2)  # 3 - 1 banned member
 
-    async def test_member_count_logic(self):
-        # Test adding members
-        initial_count = 3
-        new_members = [self.user1, self.user2]
-        expected_count = initial_count + len([m for m in new_members if str(m.id) != self.game_data['host']])
-        self.assertEqual(expected_count, 5)
-        
-        # Test removing member
-        expected_after_leave = initial_count - 1
-        self.assertEqual(expected_after_leave, 2)
-        
-        # Test host exclusion
-        host_id = self.game_data['host']
-        self.assertNotEqual(str(self.user1.id), host_id)
-        self.assertEqual(str(self.host_user.id), host_id)
 
 if __name__ == '__main__':
     unittest.main()

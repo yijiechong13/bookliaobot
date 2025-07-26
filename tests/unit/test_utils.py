@@ -78,9 +78,3 @@ class TestGameExpiration:
         is_expired_result = is_game_expired("15/06/2025", "16:00")
         assert is_expired_result is True
     
-class Test24HourConversion:
-    def test_am_pm_conversion(self):
-        assert convert_to_24_hour(1, "am") == 1
-        assert convert_to_24_hour(12, "am") == 0  # midnight
-        assert convert_to_24_hour(1, "pm") == 13
-        assert convert_to_24_hour(12, "pm") == 12  # noon

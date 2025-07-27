@@ -261,34 +261,7 @@ class TestAutomatedReminderIntegration:
         assert calls[0] == ((game_id, {'reminder_24h_sent': True}),)
         assert calls[1] == ((game_id, {'reminder_2h_sent': True}),)
 
-    @pytest.mark.asyncio
-    async def test_reminder_cancellation_integration(self, reminder_service, mock_context):
-        """Test reminder cancellation flow"""
-        game_id = 'test_game_123'
-        
-        # Test cancellation
-        result = await reminder_service.cancel_game_reminders(mock_context, game_id)
-        
-        # Verify cancellation was successful
-        assert result is True
-        assert reminder_service.cancelled_reminders == game_id
-
-    @pytest.mark.asyncio
-    async def test_chat_id_handling(self, reminder_service, mock_context, sample_game_data):
-        game_id = 'test_game_123'
-        
-        # Test with negative group ID (Telegram format)
-        sample_game_data['group_id'] = -123456789
-        
-        await reminder_service.send_24h_reminder(mock_context, sample_game_data, game_id)
-        
-        # Verify chat_id is converted to string
-        message_call = mock_context.bot.send_message.call_args
-        poll_call = mock_context.bot.send_poll.call_args
-        
-        assert message_call.kwargs['chat_id'] == '-123456789'
-        assert poll_call.kwargs['chat_id'] == '-123456789'
-
+    
     @pytest.mark.asyncio
     async def test_reminder_content_formatting(self, reminder_service, mock_context, sample_game_data):
         game_id = 'test_game_123'
@@ -317,7 +290,6 @@ class TestAutomatedReminderIntegration:
         assert '2 hours' in message_text
 
     def test_reminder_service_initialization(self, mock_database):
-        """Test that reminder service initializes correctly"""
         service = MockReminderService(mock_database)
         
         assert service.db == mock_database

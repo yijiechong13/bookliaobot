@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from utils import validate_date_format, parse_time_input
-from bot.services.telethon_service import telethon_service
+from ..services.telethon_service import telethon_service
 from bot.utils.constants import *
 from fuzzywuzzy import process
 

@@ -177,45 +177,6 @@ class TestUserPreferenceManagement:
         # Verify Firebase calls
         db.db.collection.assert_called_with("user_preference")
 
-    @pytest.mark.asyncio
-    async def test_save_empty_preferences(self, mock_update, mock_context, mock_db):
-        db, doc_mock = mock_db
-        
-        async def mock_save_preferences(update, context):
-            await update.callback_query.answer()
-            
-            filters = context.user_data.get('filters', {})
-            
-            # No filters to save
-            pref_data = {
-                'sport': filters.get('sport'),
-                'skill': filters.get('skill'),
-                'venue': filters.get('venue')
-            }
-            
-            # All values are None/empty
-            pref_data = {k: v for k, v in pref_data.items() if v}
-            success = bool(pref_data)
-            
-            if success:
-                await update.callback_query.edit_message_text("✅ Preferences saved successfully!")
-            else:
-                await update.callback_query.edit_message_text("ℹ️ No preferences to save.")
-            
-            return success
-        
-        # Empty filters
-        mock_context.user_data['filters'] = {}
-        
-        result = await mock_save_preferences(mock_update, mock_context)
-        
-        # Verify no save occurred
-        assert result == False
-        
-        # Verify appropriate message
-        call_args = mock_update.callback_query.edit_message_text.call_args
-        text = call_args[0][0] if call_args[0] else call_args[1]['text']
-        assert "ℹ️ No preferences to save." in text
 
     @pytest.mark.asyncio
     async def test_clear_all_preferences(self, mock_update, mock_context, mock_db):

@@ -56,7 +56,6 @@ class TestGameDiscoveryAndFiltering:
     
     @pytest.fixture
     def mock_context(self):
-        """Mock context with database and user data"""
         context = MagicMock()
         
         # Mock database

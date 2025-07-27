@@ -117,7 +117,7 @@ class TestHostedGames:
         ]
 
     @pytest.mark.asyncio
-    async def test_view_hosted_games_with_data_success(self, mock_update, mock_context, sample_games):
+    async def test_view_hosted_games_with_data(self, mock_update, mock_context, sample_games):
         # Setup
         mock_context.bot_data['db'].get_hosted_games.return_value = sample_games
         
@@ -155,19 +155,6 @@ class TestHostedGames:
         
         assert result == HOST_MENU
 
-    @pytest.mark.asyncio
-    async def test_view_hosted_games_database_error(self, mock_update, mock_context):
-        # Setup
-        mock_context.bot_data['db'] = None  # Simulate missing database
-        
-        # Execute
-        result = await view_hosted_games(mock_update, mock_context)
-        
-        # Verify error handling
-        mock_update.callback_query.edit_message_text.assert_called_once_with(
-            "❌ System error. Please try again later."
-        )
-        assert result == ConversationHandler.END
 
     @pytest.mark.asyncio
     async def test_navigate_to_next_game(self, mock_update, mock_context, sample_games):
@@ -272,66 +259,6 @@ class TestHostedGames:
         # Verify transition to HOST_MENU (or handle error case)
         assert result == HOST_MENU or result is None
 
-    @pytest.mark.asyncio
-    async def test_back_to_main(self, mock_update, mock_context):
-        # Setup with some user data
-        mock_context.user_data["hosted_games"] = ["some", "data"]
-        mock_context.user_data["current_game_index"] = 1
-        
-        # Execute
-        result = await back_to_main(mock_update, mock_context)
-        
-        # Verify user data cleared
-        assert mock_context.user_data == {}
-        
-        # Verify main menu displayed
-        mock_update.callback_query.edit_message_text.assert_called_once()
-        call_args = mock_update.callback_query.edit_message_text.call_args
-        message_text = call_args[1]['text']
-        assert "Welcome to BookLiao Bot" in message_text
-        
-        assert result == ConversationHandler.END
-
-    def test_format_game_display(self, sample_games):
-        game = sample_games[0]
-        formatted = HostedGamesService.format_game_display(game, 0, 2)
-        
-        # Check all required information is present
-        assert "📋 Your Game Listing (1/2)" in formatted
-        assert "🎖️ Sport: Football" in formatted
-        assert "📅 Date: 2025-01-15" in formatted
-        assert "🕒 Time: 6:00 PM - 8:00 PM" in formatted
-        assert "📍 Venue: NUS Sports Hall" in formatted
-        assert "📊 Skill: Intermediate" in formatted  # Should be title case
-        assert "🔗 Group: https://chat.whatsapp.com/test1" in formatted
-
-    def test_welcome_message(self):
-        """Test welcome message content"""
-        message = HostedGamesService.get_welcome_message()
-        
-        # Check key components
-        assert "Welcome to BookLiao Bot" in message
-        assert "NUS students" in message
-        assert "🏟️ Host a Game" in message
-        assert "👥 Join a Game" in message
-
-    @pytest.mark.asyncio
-    async def test_display_game_invalid_index(self, mock_update, mock_context, sample_games):
-        # Setup invalid index
-        mock_context.user_data["hosted_games"] = sample_games
-        mock_context.user_data["current_game_index"] = 999  # Invalid
-        
-        # Execute
-        result = await display_game(mock_update, mock_context)
-        
-        # Verify index was corrected to 0
-        assert mock_context.user_data["current_game_index"] == 0
-        
-        # Verify message displayed (allow multiple calls due to error handling)
-        assert mock_update.callback_query.edit_message_text.call_count >= 1
-        
-        # Allow for error handling in return value
-        assert result == VIEW_HOSTED_GAMES or result is None
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

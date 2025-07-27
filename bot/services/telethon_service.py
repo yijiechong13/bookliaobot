@@ -155,7 +155,7 @@ class TelethonService:
         f"• A poll will be sent 24 hours before the game to confirm attendance\n"
         f"• You'll receive 24-hour & 2-hour reminders before the game starts\n"
         f"• ℹ️ You can also find these details in the **group description** anytime.\n\n"
-        f"⚠️ **Important for Hosts:** If there are changes to the **time or venue**, "
+        f"⚠️ **Important for Host:** If there are changes to the **time or venue**, "
         f"please *cancel and recreate the game*. This ensures the updated info appears "
         f"correctly in the announcement channel and other listings. "
         f"Changes discussed only in this group won't be seen by others browsing for games.\n\n"

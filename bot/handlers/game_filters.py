@@ -71,7 +71,7 @@ async def show_filter_options(update: Update, context: ContextTypes.DEFAULT_TYPE
             options = [display for display, value in SPORTS_LIST]
             title = "🎖️Select sports (multiple allowed):"
         elif filter_type == 'skill':
-            options = [display for display, value in SKILL_LEVELS]
+            options = SKILL_LEVELS 
             title = "📊 Select skill levels (multiple allowed):"
         else:
             # For date and venue, get from Firebase
@@ -97,7 +97,7 @@ async def show_filter_options(update: Update, context: ContextTypes.DEFAULT_TYPE
                 actual_value = next((value for display, value in SPORTS_LIST if display == opt), opt)
                 is_selected = actual_value in current_selection
             elif filter_type == 'skill':
-                actual_value = next((value for display, value in SKILL_LEVELS if display == opt), opt)
+                actual_value = opt if opt in SKILL_LEVELS else opt
                 is_selected = actual_value in current_selection
             else:
                 is_selected = opt in current_selection
@@ -217,7 +217,7 @@ async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sport_map = {display.lower(): value for display, value in SPORTS_LIST}
             filter_value = sport_map.get(filter_value.lower(), filter_value.title())
         elif filter_type == 'skill':
-            skill_map = {display.lower(): value for display, value in SKILL_LEVELS}
+            skill_map = {skill.lower(): skill for skill in SKILL_LEVELS}
             filter_value = skill_map.get(filter_value.lower(), filter_value.title())
         else:
             filter_value = filter_value.title()

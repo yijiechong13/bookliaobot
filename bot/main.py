@@ -3,17 +3,17 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ChatMemberHandler
-from handlers.createagame import *
-from handlers.hostedgames import *  
+from bot.handlers.createagame import *
+from bot.handlers.hostedgames import *  
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
-from services.database import GameDatabase
-from services.telethon_service import telethon_service
+from bot.services.database import GameDatabase
+from bot.services.telethon_service import telethon_service
 import asyncio
 from datetime import timedelta
-from services.reminder import ReminderService
+from bot.services.reminder import ReminderService
 import traceback
-from handlers.membertracking import (
+from bot.handlers.membertracking import (
     track_new_members, 
     track_left_members, 
     initialize_member_counts,
@@ -22,8 +22,8 @@ from handlers.membertracking import (
 )
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
-from handlers.joingamehandlers import *
-from utils.constants import * 
+from bot.handlers.joingamehandlers import *
+from bot.utils.constants import * 
 from dotenv import load_dotenv
 import os
 load_dotenv()

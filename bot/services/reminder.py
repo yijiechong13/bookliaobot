@@ -1,8 +1,6 @@
-from datetime import datetime, timedelta
-import pytz
+from datetime import timedelta
 from telegram.ext import ContextTypes
-from firebase_admin import firestore
-from utils import DateTimeHelper, GroupIdHelper, ValidationHelper
+from utils import DateTimeHelper, GroupIdHelper
 
 class ReminderService: 
     def __init__(self, db):
@@ -166,7 +164,6 @@ class ReminderService:
 
     async def _send_reminder_message(self, context, game_data, game_id, reminder_config):
         try:
-            # Get and validate chat ID using utility function
             chat_id = self._get_validated_chat_id(game_data)
             if not chat_id:
                 return False
@@ -198,7 +195,6 @@ class ReminderService:
             return None
 
         try:
-            # Use utility function to convert to telegram format
             telegram_id = GroupIdHelper.to_telegram_format(group_id)
             chat_id = str(telegram_id)
             return chat_id
@@ -244,7 +240,7 @@ class ReminderService:
                 f"**{game_data['sport']}** game is **tomorrow**!\n\n"
             )
             footer = "See you tomorrow! 🎉"
-        else:  # 2h
+        else:  
             header = (
                 f"🚨 **2-Hour Game Alert!** 🚨\n\n"
                 f"**{game_data['sport']}** game starts in **2 hours**!\n\n"
@@ -271,6 +267,5 @@ class ReminderService:
         }
         await self._send_reminder_message(context, game_data, game_id, reminder_config)
 
-    # Legacy method for backward compatibility
     async def send_game_reminders(self, context: ContextTypes.DEFAULT_TYPE):
         await self.schedule_all_existing_reminders(context)

@@ -138,11 +138,9 @@ async def date_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_valid, result = validate_date_format(user_input)
 
     if not is_valid: 
-        # Use the actual error message returned by validate_date_format
         await update.message.reply_text(f"❌ {result}\n\nPlease enter the date again:")
         return DATE
     
-    # If valid, result contains the standardized date
     context.user_data["date"] = result
     await update.message.reply_text("What time is the game? E.g 2pm-4pm")
     return TIME
@@ -208,7 +206,7 @@ async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
 
     if query.data.startswith("venue_confirm:"):
-        venue = query.data.split(":", 1)[1].strip()  # Use split with maxsplit=1 to handle colons in venue names
+        venue = query.data.split(":", 1)[1].strip() 
         context.user_data["venue"] = venue
         
         # Continue to skill selection after confirming venue
@@ -219,19 +217,17 @@ async def venue_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         venue = query.data.split(":", 1)[1]
         context.user_data["venue"] = venue
         
-        # Continue to skill selection after keeping original venue
         await query.edit_message_text(f"✅ Venue selected: {venue}")
         return await select_skill(update, context)
 
     elif query.data == "venue_retype":
-        # Clear venue data and return to venue input
+
         context.user_data.pop('venue', None)
         await context.bot.send_message(
             chat_id =query.message.chat_id,
             text="Please enter the venue/location again:")
         return VENUE
 
-    # This should not happen, but just in case
     return VENUE_CONFIRM
 
 async def select_skill(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -346,7 +342,7 @@ async def save_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(f"✅ Reminders scheduled for new game {game_id}")
         except Exception as reminder_error:
             print(f"⚠️ Error scheduling reminders for game {game_id}: {reminder_error}")
-            # Don't fail the game creation if reminders fail
+    
 
         announcement_data = {
             "sport": game_data["sport"],

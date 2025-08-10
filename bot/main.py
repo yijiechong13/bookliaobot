@@ -86,7 +86,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    #for errors that are not in the try-except block 
     error = context.error
     error_traceback = "".join(traceback.format_tb(error.__traceback__)) if error else "No traceback"
     
@@ -226,8 +225,6 @@ def main():
         first=60  # Start after 1 minute
     )
 
-
-
     print("✅ Scheduled jobs configured")
 
     async def init_telethon():
@@ -344,7 +341,6 @@ def main():
         ChatMemberHandler.MY_CHAT_MEMBER
     ))
 
-    # Keep the regular message handlers for redundancy
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS,
         track_new_members
@@ -356,7 +352,7 @@ def main():
     ))
     application.add_error_handler(error_handler)
 
-    print("🚀 Bot is starting...") 
+    print("Bot is starting...") 
     try:
         application.run_polling(
             poll_interval=1,

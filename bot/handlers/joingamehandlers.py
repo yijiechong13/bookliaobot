@@ -1,9 +1,9 @@
 from telegram import Update
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes
 from utils.constants import *
 from .user_preferences import load_user_preferences
 from .game_filters import show_filter_menu
-import logging
+
 
 async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     db = context.bot_data['db']
@@ -16,7 +16,6 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     user_id = str(update.effective_user.id)
     
-    # Load user preferences
     filters = await load_user_preferences(user_id, db)
 
     context.user_data.update({

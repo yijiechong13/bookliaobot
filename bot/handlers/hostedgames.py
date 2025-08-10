@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from utils import ValidationHelper, DateTimeHelper
+from utils import ValidationHelper
 from utils.constants import *
 
 load_dotenv() 
@@ -36,8 +36,7 @@ class HostedGamesService:
                 nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data="next_game"))
             if nav_buttons:
                 keyboard.append(nav_buttons)
-        
-        # Action buttons
+   
         keyboard.extend([
             [InlineKeyboardButton("❌ Cancel Game", callback_data="cancel_game_prompt")],
             [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_to_main")]
@@ -159,7 +158,6 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             current_index = 0
             context.user_data["current_game_index"] = 0
         
-        # Validate index bounds
         if not (0 <= current_index < len(games)):
             print(f"❌ Invalid game index: {current_index} for {len(games)} games, resetting to 0")
             context.user_data["current_game_index"] = 0
@@ -168,7 +166,7 @@ async def display_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         game = games[current_index]
         print(f"✅ Displaying game {current_index + 1}/{len(games)}: {game.get('sport', 'Unknown')}")
         
-        # Format display text
+
         text = HostedGamesService.format_game_display(game, current_index, len(games))
         keyboard = HostedGamesService.create_game_navigation_keyboard(games, current_index)
         
@@ -225,7 +223,6 @@ async def confirm_cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await HostedGamesService.safe_query_answer(query)
 
-    # Validate required data
     required_fields = ["hosted_games", "current_game_index"]
     if not ValidationHelper.validate_required_fields(context.user_data, required_fields)[0]:
         await query.edit_message_text("❌ Error: Missing game data. Please start over.")
@@ -304,14 +301,11 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await HostedGamesService.safe_query_answer(query)
 
-    # Clear user data
     context.user_data.clear()
 
-    # Create main menu
     keyboard = HostedGamesService.create_main_menu_keyboard()
     welcome_message = HostedGamesService.get_welcome_message()
     
-    # Try to edit message, fallback to new message if needed
     success = await HostedGamesService.safe_edit_message(
         query, 
         welcome_message, 

@@ -80,12 +80,12 @@ class TelethonService:
 
             admin_rights = ChatAdminRights(
             change_info=False,           # Can't change group info
-            post_messages=True,          # Can send messages (essential!)
+            post_messages=True,          # Can send messages 
             edit_messages=True,         # Can edit messages
-            delete_messages=True,        # Can delete messages (useful for moderation)
+            delete_messages=True,        # Can delete messages 
             ban_users=True,             # Can ban users
             invite_users=True,          # Can invite users
-            pin_messages=True,           # Can pin messages (useful for important announcements)
+            pin_messages=True,           # Can pin messages 
             add_admins=False,            # Can't add other admins
             anonymous=False,             # Not anonymous
             manage_call=False,           # Can't manage voice calls
@@ -190,5 +190,4 @@ class TelethonService:
         if self.client:
             await self.client.disconnect()
 
-# Global instance
 telethon_service = TelethonService()

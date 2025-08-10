@@ -16,7 +16,7 @@ class GameDatabase:
             cred = credentials.Certificate(FIREBASE_CREDENTIALS)
             firebase_admin.initialize_app(cred)
         self.db = firestore.client()
-        self.firestore = firestore  # Add this for the FieldFilter
+        self.firestore = firestore  
     
     def save_game(self, game_data):
         game_data["created_at"] = firestore.SERVER_TIMESTAMP 

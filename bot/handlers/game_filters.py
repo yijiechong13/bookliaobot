@@ -4,7 +4,7 @@ from utils import *
 from utils.constants import *
 import logging
 import telegram
-import datetime
+
 
 async def show_filter_menu(update: Update, text: str, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
@@ -93,7 +93,6 @@ async def show_filter_options(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         keyboard = []
         for opt in options:
-            # For sport and skill, check against actual values
             if filter_type == 'sport':
                 actual_value = next((value for display, value in SPORTS_LIST if display == opt), opt)
                 is_selected = actual_value in current_selection
@@ -214,7 +213,6 @@ async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         filter_type = parts[2]
         filter_value = '_'.join(parts[3:])
         
-        # Convert display text back to actual value for sport and skill
         if filter_type == 'sport':
             sport_map = {display.lower(): value for display, value in SPORTS_LIST}
             filter_value = sport_map.get(filter_value.lower(), filter_value.title())
@@ -227,7 +225,6 @@ async def toggle_filter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         filters = context.user_data.setdefault('filters', {})
         selected = filters.get(filter_type, [])
     
-        # Ensure it is a list
         selected = [selected] if selected and not isinstance(selected, list) else selected or []
         
         # Toggle selection
@@ -300,7 +297,6 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page = context.user_data.get('page', 0)
     games_ref = db.db.collection("game").where('status', '==', 'open')
 
-    # Apply time filter first
     if time_ranges := filters.get('time'):
         time_ranges = [time_ranges] if isinstance(time_ranges, str) else time_ranges
 
@@ -382,8 +378,7 @@ async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page %= len(games)
     context.user_data['page'] = page
     game = games[page]
-    
-    # Get fresh game data from Firebase
+
     try:
         game_ref = db.db.collection("game").document(game['id'])
         game_doc = game_ref.get()

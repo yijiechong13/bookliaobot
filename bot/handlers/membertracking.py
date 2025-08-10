@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from telegram import Update, ChatMemberUpdated, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatMemberStatus
 from dotenv import load_dotenv
-from utils import GroupIdHelper, DateTimeHelper, ValidationHelper
+from utils import GroupIdHelper, ValidationHelper
 
 load_dotenv()
 
@@ -15,8 +15,8 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat.id
         new_members = update.message.new_chat_members
         
-        # Log the actual chat_id for debugging
-        print(f"🔍 New members in chat_id: {chat_id}")
+        
+        print(f"New members in chat_id: {chat_id}")
         
         # Filter out bots
         real_members = [member for member in new_members if not member.is_bot]
@@ -30,7 +30,7 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         game_data = await get_game_by_group_id(db, chat_id)
         if not game_data:
-            print(f"⚠️ No game found for chat_id: {chat_id}")
+            print(f"No game found for chat_id: {chat_id}")
             return
             
         # Filter out host (already counted)
@@ -51,7 +51,7 @@ async def track_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
     except Exception as e:
-        print(f"❌ Error in track_new_members: {e}")
+        print(f" Error in track_new_members: {e}")
 
 async def track_left_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -61,14 +61,12 @@ async def track_left_members(update: Update, context: ContextTypes.DEFAULT_TYPE)
         chat_id = update.message.chat.id
         left_member = update.message.left_chat_member
         
-        # Log the actual chat_id for debugging
-        print(f"🔍 Member left chat_id: {chat_id}")
+        print(f"Member left chat_id: {chat_id}")
         
         # Skip bots
         if left_member.is_bot:
             return
             
-        # Get game data
         db = context.bot_data.get('db')
         if not db:
             return
@@ -94,7 +92,7 @@ async def track_left_members(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         
     except Exception as e:
-        print(f"❌ Error in track_left_members: {e}")
+        print(f"Error in track_left_members: {e}")
 
 async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -107,16 +105,13 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
         old_status = chat_member_update.old_chat_member.status
         new_status = chat_member_update.new_chat_member.status
         
-        # Log the actual chat_id for debugging
-        print(f"🔍 Chat member update in chat_id: {chat_id}")
-        print(f"🔄 Status change: {old_status} -> {new_status}")
-        
-        # Skip bots
+        print(f" Chat member update in chat_id: {chat_id}")
+        print(f"Status change: {old_status} -> {new_status}")
+
         if user.is_bot:
-            print(f"⏭️ Skipping bot user: {user.first_name}")
+            print(f"⏭Skipping bot user: {user.first_name}")
             return
             
-        # Get game data
         db = context.bot_data.get('db')
         if not db:
             print("❌ No database connection available")
@@ -127,23 +122,19 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
             print(f"⚠️ No game found for chat_id: {chat_id}")
             return
             
-        # Skip host
         host_id = game_data.get('host')
         if str(user.id) == str(host_id):
             print(f"⏭️ Skipping host user: {user.first_name}")
             return
             
-        # Check for admin actions that affect member count
         is_removed = False
         is_added = False
         
-        # User was kicked or banned (more specific status checking)
         if (old_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR] and 
             new_status in [ChatMemberStatus.BANNED, ChatMemberStatus.LEFT]):
             is_removed = True
             print(f"👋 User {user.first_name} was removed (status: {new_status})")
             
-        # User was unbanned or promoted to member
         elif (old_status in [ChatMemberStatus.KICKED, ChatMemberStatus.BANNED, ChatMemberStatus.LEFT] and 
               new_status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR]):
             is_added = True
@@ -155,7 +146,7 @@ async def track_chat_member_updates(update: Update, context: ContextTypes.DEFAUL
                 context, 
                 game_data, 
                 1, 
-                is_added,  # is_join
+                is_added,  
                 [user]
             )
         else:
@@ -170,7 +161,6 @@ async def get_game_by_group_id(db, group_id):
     try:
         games_ref = db.db.collection("game")
         
-        # Use GroupIdHelper to normalize the group ID for search
         search_group_id = GroupIdHelper.get_search_group_id(group_id)
         GroupIdHelper.log_group_conversion(group_id, search_group_id, "search")
         
@@ -236,7 +226,6 @@ async def update_member_count(context: ContextTypes.DEFAULT_TYPE, game_data, cou
         else:
             print(f"⚠️ No announcement_msg_id found for game {game_id}")
         
-        # Log user actions
         user_names = [user.first_name for user in users]
         action = "joined" if is_join else "left"
         print(f"👥 {', '.join(user_names)} {action}. New count: {new_count}")
@@ -254,13 +243,11 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
             print("❌ No announcement channel configured")
             return False
         
-        # Use ValidationHelper to validate game data
         is_valid, errors = ValidationHelper.validate_game_data(game_data)
         if not is_valid:
             print(f"❌ Game data validation failed: {errors}")
             return False
         
-        # Format announcement text
         announcement_text = (
             f"🏟️ New {game_data['sport']} Game!\n\n"
             f"📅 Date: {game_data['date']}\n"
@@ -271,13 +258,11 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
             f"👤 Host: @{game_data.get('host_username', 'Anonymous')}\n\n"
             f"🔗 Join Group: {game_data['group_link']}"
         )
-        
-        # Create keyboard
+ 
         keyboard = [[InlineKeyboardButton("✋ Join Game", url=game_data['group_link'])]]
         
         print(f"🔄 Editing message in channel {ANNOUNCEMENT_CHANNEL}, message ID: {announcement_msg_id}")
         
-        # Edit message with better error handling
         try:
             await context.bot.edit_message_text(
                 chat_id=ANNOUNCEMENT_CHANNEL,
@@ -292,7 +277,6 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
         except Exception as edit_error:
             print(f"❌ Telegram API error while editing message: {edit_error}")
             
-            # Check if it's a "message not found" error
             if "message not found" in str(edit_error).lower():
                 print("⚠️ Message not found - it may have been deleted")
                 
@@ -302,7 +286,7 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
                 
             elif "bad request" in str(edit_error).lower():
                 print(f"⚠️ Bad request error - checking channel access and message ID format")
-                # Verify channel access
+
                 try:
                     chat_info = await context.bot.get_chat(ANNOUNCEMENT_CHANNEL)
                     print(f"✅ Channel accessible: {chat_info.title}")
@@ -321,13 +305,12 @@ async def update_announcement_with_count(context: ContextTypes.DEFAULT_TYPE, gam
 
 async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
     try:
-        # Use GroupIdHelper to convert to proper Telegram format
+    
         telegram_group_id = GroupIdHelper.to_telegram_format(group_id)
         GroupIdHelper.log_group_conversion(group_id, telegram_group_id, "telegram_format")
         
         print(f"🔍 Getting member count for telegram group_id: {telegram_group_id}")
         
-        # First, verify chat access
         try:
             chat_info = await context.bot.get_chat(telegram_group_id)
             print(f"✅ Chat accessible: {chat_info.title}")
@@ -339,13 +322,11 @@ async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
         total_count = await context.bot.get_chat_member_count(telegram_group_id)
         print(f"📊 Total chat members: {total_count}")
         
-        # Try to get more accurate count by checking administrators
         try:
             admins = await context.bot.get_chat_administrators(telegram_group_id)
             bot_count = sum(1 for admin in admins if admin.user.is_bot)
             print(f"🤖 Bot administrators found: {bot_count}")
             
-            # Subtract bots, ensure minimum of 1
             actual_count = max(1, total_count - bot_count)
             print(f"📊 Calculated member count: {actual_count}")
             
@@ -353,7 +334,6 @@ async def get_actual_member_count(context: ContextTypes.DEFAULT_TYPE, group_id):
             
         except Exception as admin_error:
             print(f"⚠️ Could not get admin list: {admin_error}")
-            # Fallback: subtract 1 for the bot
             return max(1, total_count - 1)
             
     except Exception as e:

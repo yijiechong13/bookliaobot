@@ -7,15 +7,15 @@ Pick a sport, set the time and venue, and the bot automatically creates a Telegr
 ## Screenshots
 
 <p align="center">
-  <img src="onboarding.png" alt="Onboarding" width="250"/>
-  <img src="roleselection.png" alt="Role Selection" width="250"/>
-  <img src="groupcreation.png" alt="Group Creation" width="250"/>
+  <img src="onboarding.png" alt="Onboarding" width="250"/><br/>
+  <img src="roleselection.png" alt="Role Selection" width="250"/><br/>
   <img src="announcementchannel.png" alt="Announcement Channel" width="250"/>
 </p>
 
 ## Features
 
 **Host a Game**
+
 - Choose from 9 sports: Football, Basketball, Tennis, Volleyball, Badminton, Ultimate Frisbee, Floorball, Table Tennis, Touch Rugby
 - Set date, time, venue, and skill level (Beginner / Intermediate / Advanced)
 - Integrated venue booking links for NUS facilities and ActiveSG centres
@@ -24,24 +24,26 @@ Pick a sport, set the time and venue, and the bot automatically creates a Telegr
 - Posts game announcements to [@BookLiaoAnnouncementChannel](https://t.me/BookLiaoAnnouncementChannel)
 
 **Join a Game**
+
 - Browse available games with filters: sport, skill level, date, time, venue
 - Save your filter preferences for next time
 - Join games directly through generated group links
 
 **Automated Game Management**
+
 - Game reminders at 24 hours and 2 hours before start
 - Real-time member count tracking and announcement updates
 - Automatic cleanup of expired games
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Bot Framework | [python-telegram-bot](https://python-telegram-bot.org/) v22.1 |
-| Group Creation | [Telethon](https://docs.telethon.dev/) v1.40.0 |
-| Database | Firebase Cloud Firestore |
-| Venue Matching | rapidfuzz + spaCy NLP |
-| Scheduling | APScheduler (via PTB JobQueue) |
+| Component      | Technology                                                    |
+| -------------- | ------------------------------------------------------------- |
+| Bot Framework  | [python-telegram-bot](https://python-telegram-bot.org/) v22.1 |
+| Group Creation | [Telethon](https://docs.telethon.dev/) v1.40.0                |
+| Database       | Firebase Cloud Firestore                                      |
+| Venue Matching | rapidfuzz + spaCy NLP                                         |
+| Scheduling     | APScheduler (via PTB JobQueue)                                |
 
 ## Project Structure
 
@@ -85,12 +87,14 @@ bookliaobot/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/bookliaobot.git
    cd bookliaobot
    ```
 
 2. **Create and activate a virtual environment**
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate        # macOS/Linux
@@ -98,6 +102,7 @@ bookliaobot/
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -112,6 +117,7 @@ bookliaobot/
    - Create a new application to get your API ID and API Hash
 
 6. **Create a `.env` file** in the project root:
+
    ```env
    BOT_TOKEN=your_bot_token
    BOT_USERNAME=@YourBotUsername
@@ -140,11 +146,11 @@ pytest tests/
 
 ## Bot Commands
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Open the main menu |
-| `/cancel` | Cancel the current action |
-| `/feedback` | Open the feedback form |
+| Command     | Description               |
+| ----------- | ------------------------- |
+| `/start`    | Open the main menu        |
+| `/cancel`   | Cancel the current action |
+| `/feedback` | Open the feedback form    |
 
 ## How It Works
 

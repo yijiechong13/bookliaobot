@@ -1,25 +1,25 @@
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler, ChatMemberHandler
-from bot.handlers.createagame import *
-from bot.handlers.hostedgames import *  
+from .handlers.createagame import *
+from .handlers.hostedgames import *
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
-from bot.services.database import GameDatabase
-from bot.services.telethon_service import telethon_service
+from .services.database import GameDatabase
+from .services.telethon_service import telethon_service
 import asyncio
 from datetime import timedelta
-from bot.services.reminder import ReminderService
+from .services.reminder import ReminderService
 import traceback
-from bot.handlers.membertracking import (
-    track_new_members, 
-    track_left_members, 
+from .handlers.membertracking import (
+    track_new_members,
+    track_left_members,
     initialize_member_counts,
-    track_all_chat_member_changes,  
-    periodic_member_sync           
+    track_all_chat_member_changes,
+    periodic_member_sync
 )
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
-from bot.handlers.joingamehandlers import *
-from bot.utils.constants import * 
+from .handlers.joingamehandlers import *
+from .utils.constants import *
 from dotenv import load_dotenv
 import os
 load_dotenv()

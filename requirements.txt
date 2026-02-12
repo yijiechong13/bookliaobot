@@ -1,5 +1,8 @@
 firebase_admin==6.9.0
+fuzzywuzzy==0.18.0
 python-dotenv==1.1.1
-python-telegram-bot==22.1
+python-telegram-bot[job-queue]==22.1
 pytz==2025.2
+rapidfuzz==3.12.2
+spacy==3.8.11
 Telethon==1.40.0

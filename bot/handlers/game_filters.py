@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
-from utils import *
-from utils.constants import *
+from ..utils import *
+from ..utils.constants import *
 import logging
 import telegram
 

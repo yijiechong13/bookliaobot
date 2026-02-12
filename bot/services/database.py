@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
-from utils import is_game_expired
+from ..utils import is_game_expired
 from telegram.ext import ContextTypes
 
 
